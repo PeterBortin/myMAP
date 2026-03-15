@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>NEURAL INTERFACE v10.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        :root {
+            --neon: #32ff7e;
+            --danger: #ff3f34;
+            --glass: rgba(0, 0, 0, 0.85);
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: #000; overflow: hidden; font-family: 'Courier New', monospace; 
+            color: var(--neon); touch-action: none;
+        }
+        
+        .map-wrapper { position: absolute; inset: 0; transition: filter 0.6s ease; }
+        .map-layer { position: absolute; inset: 0; }
+
+        /* Эффект Predator-Vision */
+        .predator-mode { filter: hue-rotate(240deg) saturate(1.8) brightness(0.8) contrast(1.3); }
+
+        /* --- ИЗМЕНЕНО: Маска сканера с размытием границы (radial-gradient с плавным переходом) --- */
+        #map-top {
+            z-index: 2;
+            -webkit-mask-image: radial-gradient(
+                circle, 
+                black 100px,           /* Полностью непрозрачный центр (100px) */
+                transparent 160px      /* Плавно становится полностью прозрачным к 160px */
+            );
+            mask-image: radial-gradient(
+                circle, 
+                black 100px, 
+                transparent 160px
+            );
+            pointer-events: none;
+        }
+        
+        /* Внешняя зона (вне круга) */
+        #map-bottom { z-index: 1; filter: brightness(0.4) grayscale(1); }
+
+        /* Сетка помех */
+        .overlay-fx {
+            position: absolute; inset: 0; pointer-events: none; z-index: 150;
+            background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0px, transparent 1px);
+            background-size: 100% 4px;
+        }
+
+        .hud {
+            position: absolute; inset: 0; z-index: 200; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 25px;
+        }
+
+        .header { display: flex; justify-content: space-between; font-size: 11px; text-transform: uppercase; }
+        
+        /* Прицел */
+        .crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 320px; height: 320px; /* Соответствует зоне плавного размытия */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+        
+        /* Точка 0 */
+        .crosshair::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 4px; height: 4px; background: var(--neon);
+            transform: translate(-50%, -50%); border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon);
+        }
+
+        .controls { display: flex; justify-content: center; padding-bottom: 40px; pointer-events: auto; }
+        .btn {
+            background: var(--glass); border: 1px solid white;
+            color: white; padding: 12px 30px; cursor: pointer;
+            text-transform: uppercase; font-weight: bold; letter-spacing: 2px;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+            transition: 0.3s;
+        }
+        .btn:hover { background: white; color: black; }
+    </style>
+</head>
+<body>
+
+<div class="overlay-fx"></div>
+
+<div class="map-wrapper" id="master-wrapper">
+    <div id="map-bottom" class="map-layer"></div>
+    <div id="map-top" class="map-layer"></div>
+</div>
+
+<div class="hud">
+    <div class="header">
+        <div id="status">SOFT_GRID_SCAN</div>
+        <div id="coords">0.0000, 0.0000</div>
+    </div>
+    
+    <div class="crosshair"></div>
+
+    <div class="controls">
+        <button class="btn" onclick="toggleVision()">Viewport Mode</button>
+    </div>
+</div>
+
+<script>
+    const STYLES = {
+        vector: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        satellite: {
+            "version": 8,
+            "sources": { "sat": { "type": "raster", "tiles": ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"], "tileSize": 256 }},
+            "layers": [{ "id": "sat", "type": "raster", "source": "sat" }]
+        }
+    };
+
+    let isSatellite = false;
+    const config = { center: [30.5234, 50.4501], zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
+
+    const mapBottom = new maplibregl.Map({ container: 'map-bottom', style: STYLES.vector, ...config });
+    const mapTop = new maplibregl.Map({ container: 'map-top', style: STYLES.vector, ...config, interactionHandlers: false });
+
+    mapBottom.on('move', () => {
+        mapTop.jumpTo({
+            center: mapBottom.getCenter(),
+            zoom: mapBottom.getZoom(),
+            pitch: mapBottom.getPitch(),
+            bearing: mapBottom.getBearing()
+        });
+        const c = mapBottom.getCenter();
+        document.getElementById('coords').innerText = `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
+    });
+
+    function initBuildings(map, id, isTop) {
+        const source = map.getSource('carto') ? 'carto' : 'openmaptiles';
+        if (!map.getSource(source)) return;
+
+        map.addLayer({
+            'id': id,
+            'source': source,
+            'source-layer': 'building',
+            'type': 'fill-extrusion',
+            'paint': {
+                'fill-extrusion-color': isTop ? '#555555' : '#111111',
+                'fill-extrusion-height': ['get', 'render_height'],
+                'fill-extrusion-base': ['get', 'render_min_height'],
+                'fill-extrusion-opacity': isTop ? 0.8 : 0.4,
+                'fill-extrusion-vertical-gradient': true
+            }
+        });
+
+        map.setLight({
+            anchor: 'viewport',
+            color: '#ffffff',
+            intensity: 0.3,
+            position: [1.1, 90, 45]
+        });
+    }
+
+    mapBottom.on('style.load', () => initBuildings(mapBottom, 'bot-3d', false));
+    mapTop.on('style.load', () => initBuildings(mapTop, 'top-3d', true));
+
+    function toggleVision() {
+        isSatellite = !isSatellite;
+        const wrapper = document.getElementById('master-wrapper');
+        wrapper.style.filter = "brightness(2) blur(5px)";
+        
+        setTimeout(() => {
+            if (isSatellite) {
+                mapBottom.setStyle(STYLES.satellite);
+                wrapper.classList.add('predator-mode');
+            } else {
+                mapBottom.setStyle(STYLES.vector);
+                wrapper.classList.remove('predator-mode');
+            }
+            wrapper.style.filter = "";
+        }, 250);
+    }
+</script>
+</body>
+</html>
