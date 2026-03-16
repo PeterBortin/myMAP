@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>NEURAL INTERFACE v14.0</title>
+    <title>NEURAL INTERFACE v14.0 - SCANNER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -13,7 +13,6 @@
         .map-wrapper { position: absolute; inset: 0; transition: filter 0.4s; }
         .map-layer { position: absolute; inset: 0; }
 
-        /* Увеличенный блюр граней (растянутый градиент маски) */
         #map-top {
             z-index: 2;
             -webkit-mask-image: radial-gradient(circle, black 100px, transparent 180px);
@@ -33,18 +32,26 @@
         }
         .col b { color: #fff; }
 
-        /* Чистый прицел без яркой окантовки */
         .crosshair { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             width: 360px; height: 360px; 
-            border: 1px solid rgba(50, 255, 126, 0.05); /* Почти невидимый контур */
+            border: 1px solid rgba(50, 255, 126, 0.05);
             border-radius: 50%; 
         }
         .crosshair::after {
             content: ''; position: absolute; top: 50%; left: 50%;
             width: 2px; height: 2px; background: var(--neon);
             transform: translate(-50%, -50%); border-radius: 50%;
-            box-shadow: 0 0 4px var(--neon);
+            box-shadow: 0 0 8px var(--neon);
+        }
+
+        .target-data {
+            position: absolute;
+            top: calc(50% + 20px);
+            left: calc(50% + 20px);
+            font-size: 9px;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px #000;
         }
 
         .controls { display: flex; justify-content: center; padding-bottom: 40px; pointer-events: auto; }
@@ -84,12 +91,14 @@
             <b id="coords">CONNECTING...</b>
         </div>
         <div class="col" style="text-align: right;">
-            <span>ENV: <b>STABLE</b></span>
+            <span>MODE: <b id="mode-text">VECTOR</b></span>
             <span>TEMP: <b>18.1°C</b></span>
         </div>
     </div>
     
-    <div class="crosshair"></div>
+    <div class="crosshair">
+        <div class="target-data" id="target-info"></div>
+    </div>
 
     <div class="controls">
         <button class="btn" onclick="toggleVision()">Viewport</button>
@@ -113,15 +122,89 @@
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.05); 
+        gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.02); 
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
         osc.connect(gain); gain.connect(audioCtx.destination);
         osc.start(); osc.stop(audioCtx.currentTime + duration);
     }
 
-    const config = { center: [30.5234, 50.4501], zoom: 16, pitch: 60, bearing: -15, attributionControl: false };
+    const config = { center: [30.5234, 50.4501], zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
     const mapBottom = new maplibregl.Map({ container: 'map-bottom', style: STYLES.vector, ...config });
     const mapTop = new maplibregl.Map({ container: 'map-top', style: STYLES.vector, ...config, interactionHandlers: false });
+
+    let hoveredBuildingId = null;
+
+    function initBuildings(map, id, isTop) {
+        map.on('style.load', () => {
+            const sourceName = 'carto'; 
+            if (!map.getSource(sourceName)) return;
+
+            // Базовый слой зданий
+            map.addLayer({
+                'id': id, 
+                'source': sourceName, 
+                'source-layer': 'building', 
+                'type': 'fill-extrusion',
+                'paint': {
+                    'fill-extrusion-color': isTop ? '#333' : '#050505',
+                    'fill-extrusion-height': ['get', 'render_height'],
+                    'fill-extrusion-base': ['get', 'render_min_height'],
+                    'fill-extrusion-opacity': isTop ? 0.8 : 0.5
+                }
+            });
+
+            // Слой ПОДСВЕТКИ (только для верхнего слоя)
+            if (isTop) {
+                map.addLayer({
+                    'id': 'building-highlight',
+                    'source': sourceName,
+                    'source-layer': 'building',
+                    'type': 'fill-extrusion',
+                    'paint': {
+                        'fill-extrusion-color': '#32ff7e',
+                        'fill-extrusion-height': ['get', 'render_height'],
+                        'fill-extrusion-base': ['get', 'render_min_height'],
+                        'fill-extrusion-opacity': 0.7
+                    },
+                    'filter': ['==', ['id'], ''] 
+                });
+            }
+        });
+    }
+
+    initBuildings(mapBottom, 'bot-3d', false);
+    initBuildings(mapTop, 'top-3d', true);
+
+    // Функция детекции объекта в центре
+    function updateSelection() {
+        // Координаты центра экрана
+        const centerPoint = [window.innerWidth / 2, window.innerHeight / 2];
+        const features = mapTop.queryRenderedFeatures(centerPoint, { layers: ['top-3d'] });
+
+        const infoBox = document.getElementById('target-info');
+
+        if (features.length > 0) {
+            const feature = features[0];
+            const id = feature.id;
+
+            if (id !== hoveredBuildingId) {
+                hoveredBuildingId = id;
+                mapTop.setFilter('building-highlight', ['==', ['id'], id]);
+                
+                // Эффект при наведении
+                playSoftSound(600, 0.1, 0.01);
+                
+                const height = feature.properties.render_height || 'N/A';
+                infoBox.innerHTML = `TARGET_LOCKED<br>H: ${height}m<br>ID: ${id.toString().slice(0,8)}`;
+            }
+        } else {
+            if (hoveredBuildingId !== null) {
+                hoveredBuildingId = null;
+                mapTop.setFilter('building-highlight', ['==', ['id'], '']);
+                infoBox.innerHTML = '';
+            }
+        }
+    }
 
     navigator.geolocation.getCurrentPosition(pos => {
         const userLoc = [pos.coords.longitude, pos.coords.latitude];
@@ -130,38 +213,28 @@
     });
 
     mapBottom.on('move', () => {
-        mapTop.jumpTo({ center: mapBottom.getCenter(), zoom: mapBottom.getZoom(), pitch: mapBottom.getPitch(), bearing: mapBottom.getBearing() });
-        const c = mapBottom.getCenter();
-        document.getElementById('coords').innerText = `${c.lat.toFixed(4)}N ${c.lng.toFixed(4)}E`;
+        const center = mapBottom.getCenter();
+        const zoom = mapBottom.getZoom();
+        const pitch = mapBottom.getPitch();
+        const bearing = mapBottom.getBearing();
+
+        mapTop.jumpTo({ center, zoom, pitch, bearing });
+        
+        document.getElementById('coords').innerText = `${center.lat.toFixed(4)}N ${center.lng.toFixed(4)}E`;
+        updateSelection();
     });
-
-    function initBuildings(map, id, isTop) {
-        map.on('style.load', () => {
-            const source = map.getSource('carto') ? 'carto' : 'openmaptiles';
-            if (!map.getSource(source)) return;
-            map.addLayer({
-                'id': id, 'source': source, 'source-layer': 'building', 'type': 'fill-extrusion',
-                'paint': {
-                    'fill-extrusion-color': isTop ? '#444' : '#0a0a0a',
-                    'fill-extrusion-height': ['get', 'render_height'],
-                    'fill-extrusion-opacity': isTop ? 0.7 : 0.3,
-                    'fill-extrusion-vertical-gradient': true
-                }
-            });
-        });
-    }
-
-    initBuildings(mapBottom, 'bot-3d', false);
-    initBuildings(mapTop, 'top-3d', true);
 
     let isSatellite = false;
     function toggleVision() {
         playSoftSound(400, 0.3, 0.02);
         isSatellite = !isSatellite;
         const wrapper = document.getElementById('master-wrapper');
+        document.getElementById('mode-text').innerText = isSatellite ? 'SATELLITE' : 'VECTOR';
+        
         wrapper.style.filter = "brightness(1.5) blur(12px)";
         setTimeout(() => {
             mapBottom.setStyle(isSatellite ? STYLES.satellite : STYLES.vector);
+            // При смене стиля слои нужно пересоздать, если это не предусмотрено стилем
             wrapper.style.filter = "";
         }, 250);
     }
