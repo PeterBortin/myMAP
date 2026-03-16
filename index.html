@@ -7,12 +7,11 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        :root { --neon: #32ff7e; --glass: rgba(0, 0, 0, 0.4); }
+        :root { --neon: #32ff7e; --glass: rgba(0, 0, 0, 0.6); }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: var(--neon); }
         
         .map-wrapper { position: absolute; inset: 0; transition: filter 0.4s; }
         .map-layer { position: absolute; inset: 0; }
-
         #map-top {
             z-index: 2;
             -webkit-mask-image: radial-gradient(circle, black 100px, transparent 180px);
@@ -23,53 +22,62 @@
 
         .hud { position: absolute; inset: 0; z-index: 200; pointer-events: none; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         
-        .header-grid { 
-            display: grid; grid-template-columns: 1fr 1fr 1fr; 
-            font-size: 10px; text-transform: uppercase; gap: 20px; 
-            background: var(--glass); padding: 10px; 
-            border-bottom: 1px solid rgba(50, 255, 126, 0.05); 
-            opacity: 0.45;
-        }
-        .col b { color: #fff; }
+        /* Верхняя панель */
+        .top-panels { display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
 
+        /* Левая панель Телеметрии */
+        .telemetry-box {
+            background: var(--glass);
+            padding: 10px;
+            font-size: 10px;
+            line-height: 1.4;
+            border-left: 2px solid var(--neon);
+            text-transform: uppercase;
+            min-width: 220px;
+        }
+        .telemetry-box b { color: #fff; }
+
+        /* Прямоугольная мини-карта */
+        .minimap-container {
+            width: 180px;
+            height: 120px;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(50, 255, 126, 0.3);
+        }
+        #minimap { width: 100%; height: 100%; filter: saturate(0.6) brightness(0.7); }
+        
+        /* Точка пользователя на мини-карте */
+        .user-dot {
+            width: 8px; height: 8px;
+            background: var(--neon);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon);
+            position: relative;
+        }
+        .user-dot::after {
+            content: ''; position: absolute; top: -10px; left: 3px;
+            width: 2px; height: 10px; background: var(--neon);
+            box-shadow: 0 0 5px var(--neon);
+        }
+
+        /* Центральные элементы */
         .crosshair { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            width: 360px; height: 360px; 
-            border: 1px solid rgba(50, 255, 126, 0.05);
-            border-radius: 50%; 
+            width: 300px; height: 300px; border: 1px solid rgba(50, 255, 126, 0.05); border-radius: 50%; 
         }
-        .crosshair::after {
-            content: ''; position: absolute; top: 50%; left: 50%;
-            width: 2px; height: 2px; background: var(--neon);
-            transform: translate(-50%, -50%); border-radius: 50%;
-            box-shadow: 0 0 8px var(--neon);
-        }
-
         .target-data {
-            position: absolute;
-            top: calc(50% + 20px);
-            left: calc(50% + 20px);
-            font-size: 9px;
-            letter-spacing: 1px;
-            text-shadow: 0 0 5px #000;
+            position: absolute; top: calc(50% + 20px); left: calc(50% + 20px);
+            font-size: 9px; letter-spacing: 1px; text-shadow: 0 0 5px #000;
         }
 
         .controls { display: flex; justify-content: center; padding-bottom: 40px; pointer-events: auto; }
-        
         .btn { 
-            background: rgba(0, 0, 0, 0.6); 
-            border: 1px solid rgba(50, 255, 126, 0.3); 
-            color: var(--neon); 
-            padding: 10px 30px; 
-            cursor: pointer; 
-            text-transform: uppercase; 
-            letter-spacing: 3px; 
-            font-size: 11px;
-            transition: 0.4s cubic-bezier(0.2, 1, 0.3, 1); 
+            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(50, 255, 126, 0.3); 
+            color: var(--neon); padding: 10px 30px; cursor: pointer; 
+            text-transform: uppercase; letter-spacing: 3px; font-size: 11px;
         }
-        .btn:hover { border-color: var(--neon); background: rgba(50, 255, 126, 0.1); text-shadow: 0 0 8px var(--neon); }
-        .btn:active { transform: scale(0.97); opacity: 0.7; }
-
         .overlay-fx { position: absolute; inset: 0; pointer-events: none; z-index: 150; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.005) 0px, transparent 1px); background-size: 100% 4px; }
     </style>
 </head>
@@ -82,17 +90,17 @@
 </div>
 
 <div class="hud">
-    <div class="header-grid">
-        <div class="col">
-            <span>STATION: <b>ORBITAL_V9</b></span>
-            <span>LINK: <b id="signal">--%</b></span>
+    <div class="top-panels">
+        <div class="telemetry-box" id="telemetry">
+            ENV: <b>ACTIVE_SCAN</b><br>
+            LOC: <b id="loc-name">CALCULATING...</b><br>
+            WTHR: <b>CLEAR / 18.1°C</b><br>
+            AIR: <b>AQI 42 (GOOD)</b><br>
+            CO2: <b>415.2 PPM</b>
         </div>
-        <div class="col" style="text-align: center;">
-            <b id="coords">CONNECTING...</b>
-        </div>
-        <div class="col" style="text-align: right;">
-            <span>MODE: <b id="mode-text">VECTOR</b></span>
-            <span>TEMP: <b>18.1°C</b></span>
+
+        <div class="minimap-container">
+            <div id="minimap"></div>
         </div>
     </div>
     
@@ -101,7 +109,7 @@
     </div>
 
     <div class="controls">
-        <button class="btn" onclick="toggleVision()">Viewport</button>
+        <button class="btn" onclick="toggleVision()">Viewport Mode</button>
     </div>
 </div>
 
@@ -114,88 +122,63 @@
         }
     };
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSoftSound(freq, duration, vol) {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.02); 
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + duration);
-    }
-
     const config = { center: [30.5234, 50.4501], zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
+    
+    // Инициализация карт
     const mapBottom = new maplibregl.Map({ container: 'map-bottom', style: STYLES.vector, ...config });
     const mapTop = new maplibregl.Map({ container: 'map-top', style: STYLES.vector, ...config, interactionHandlers: false });
+    const miniMap = new maplibregl.Map({ 
+        container: 'minimap', 
+        style: STYLES.satellite, 
+        center: config.center, 
+        zoom: 14, 
+        interactive: false, 
+        attributionControl: false 
+    });
 
-    let hoveredBuildingId = null;
+    // Маркер пользователя (точка с направлением)
+    const el = document.createElement('div');
+    el.className = 'user-dot';
+    const marker = new maplibregl.Marker({ element: el }).setLngLat(config.center).addTo(miniMap);
 
-    function initBuildings(map, id, isTop) {
-        map.on('style.load', () => {
-            const sourceName = 'carto'; 
-            if (!map.getSource(sourceName)) return;
+    // Синхронизация
+    mapBottom.on('move', () => {
+        const center = mapBottom.getCenter();
+        const zoom = mapBottom.getZoom();
+        const bearing = mapBottom.getBearing();
+        const pitch = mapBottom.getPitch();
 
-            // Базовый слой зданий
-            map.addLayer({
-                'id': id, 
-                'source': sourceName, 
-                'source-layer': 'building', 
-                'type': 'fill-extrusion',
-                'paint': {
-                    'fill-extrusion-color': isTop ? '#333' : '#050505',
-                    'fill-extrusion-height': ['get', 'render_height'],
-                    'fill-extrusion-base': ['get', 'render_min_height'],
-                    'fill-extrusion-opacity': isTop ? 0.8 : 0.5
-                }
-            });
-
-            // Слой ПОДСВЕТКИ (только для верхнего слоя)
-            if (isTop) {
-                map.addLayer({
-                    'id': 'building-highlight',
-                    'source': sourceName,
-                    'source-layer': 'building',
-                    'type': 'fill-extrusion',
-                    'paint': {
-                        'fill-extrusion-color': '#32ff7e',
-                        'fill-extrusion-height': ['get', 'render_height'],
-                        'fill-extrusion-base': ['get', 'render_min_height'],
-                        'fill-extrusion-opacity': 0.7
-                    },
-                    'filter': ['==', ['id'], ''] 
-                });
-            }
+        // Поворачиваем и центрируем мини-карту синхронно
+        miniMap.jumpTo({
+            center: center,
+            bearing: bearing,
+            zoom: Math.max(zoom - 2.5, 12)
         });
-    }
 
-    initBuildings(mapBottom, 'bot-3d', false);
-    initBuildings(mapTop, 'top-3d', true);
+        mapTop.jumpTo({ center, zoom, pitch, bearing });
+        
+        // Обновляем маркер (он всегда в центре мини-карты, но мы обновляем его положение в мире)
+        marker.setLngLat(center);
+        
+        // Обновление телеметрии
+        document.getElementById('loc-name').innerText = `${center.lat.toFixed(4)}N ${center.lng.toFixed(4)}E`;
+        updateSelection();
+    });
 
-    // Функция детекции объекта в центре
+    // Функция детекции объектов (зданий)
+    let hoveredBuildingId = null;
     function updateSelection() {
-        // Координаты центра экрана
         const centerPoint = [window.innerWidth / 2, window.innerHeight / 2];
         const features = mapTop.queryRenderedFeatures(centerPoint, { layers: ['top-3d'] });
-
         const infoBox = document.getElementById('target-info');
 
         if (features.length > 0) {
             const feature = features[0];
             const id = feature.id;
-
             if (id !== hoveredBuildingId) {
                 hoveredBuildingId = id;
                 mapTop.setFilter('building-highlight', ['==', ['id'], id]);
-                
-                // Эффект при наведении
-                playSoftSound(600, 0.1, 0.01);
-                
-                const height = feature.properties.render_height || 'N/A';
-                infoBox.innerHTML = `TARGET_LOCKED<br>H: ${height}m<br>ID: ${id.toString().slice(0,8)}`;
+                infoBox.innerHTML = `TARGET_LOCKED<br>ID: ${id.toString().slice(0,8)}`;
             }
         } else {
             if (hoveredBuildingId !== null) {
@@ -206,42 +189,43 @@
         }
     }
 
-    navigator.geolocation.getCurrentPosition(pos => {
-        const userLoc = [pos.coords.longitude, pos.coords.latitude];
-        mapBottom.flyTo({ center: userLoc, zoom: 17, duration: 3000 });
-        playSoftSound(220, 0.8, 0.03);
-    });
-
-    mapBottom.on('move', () => {
-        const center = mapBottom.getCenter();
-        const zoom = mapBottom.getZoom();
-        const pitch = mapBottom.getPitch();
-        const bearing = mapBottom.getBearing();
-
-        mapTop.jumpTo({ center, zoom, pitch, bearing });
-        
-        document.getElementById('coords').innerText = `${center.lat.toFixed(4)}N ${center.lng.toFixed(4)}E`;
-        updateSelection();
-    });
-
-    let isSatellite = false;
-    function toggleVision() {
-        playSoftSound(400, 0.3, 0.02);
-        isSatellite = !isSatellite;
-        const wrapper = document.getElementById('master-wrapper');
-        document.getElementById('mode-text').innerText = isSatellite ? 'SATELLITE' : 'VECTOR';
-        
-        wrapper.style.filter = "brightness(1.5) blur(12px)";
-        setTimeout(() => {
-            mapBottom.setStyle(isSatellite ? STYLES.satellite : STYLES.vector);
-            // При смене стиля слои нужно пересоздать, если это не предусмотрено стилем
-            wrapper.style.filter = "";
-        }, 250);
+    // Инициализация 3D слоев
+    function initBuildings(map, id, isTop) {
+        map.on('style.load', () => {
+            const src = 'carto';
+            if (!map.getSource(src)) return;
+            map.addLayer({
+                'id': id, 'source': src, 'source-layer': 'building', 'type': 'fill-extrusion',
+                'paint': {
+                    'fill-extrusion-color': isTop ? '#333' : '#050505',
+                    'fill-extrusion-height': ['get', 'render_height'],
+                    'fill-extrusion-base': ['get', 'render_min_height'],
+                    'fill-extrusion-opacity': isTop ? 0.8 : 0.5
+                }
+            });
+            if (isTop) {
+                map.addLayer({
+                    'id': 'building-highlight', 'source': src, 'source-layer': 'building', 'type': 'fill-extrusion',
+                    'paint': { 'fill-extrusion-color': '#32ff7e', 'fill-extrusion-height': ['get', 'render_height'], 'fill-extrusion-opacity': 0.8 },
+                    'filter': ['==', ['id'], '']
+                });
+            }
+        });
     }
 
-    setInterval(() => {
-        document.getElementById('signal').innerText = (98 + Math.random() * 1.9).toFixed(1) + '%';
-    }, 4000);
+    initBuildings(mapBottom, 'bot-3d', false);
+    initBuildings(mapTop, 'top-3d', true);
+
+    function toggleVision() {
+        const isSat = mapBottom.getStyle().layers.some(l => l.id === 'sat');
+        mapBottom.setStyle(isSat ? STYLES.vector : STYLES.satellite);
+    }
+
+    // Получение реальной локации
+    navigator.geolocation.getCurrentPosition(pos => {
+        const userLoc = [pos.coords.longitude, pos.coords.latitude];
+        mapBottom.flyTo({ center: userLoc, zoom: 17 });
+    });
 </script>
 </body>
 </html>
