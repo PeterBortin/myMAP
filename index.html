@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>NEURAL INTERFACE v14.6 - TACTICAL SCANNER</title>
+    <title>NEURAL INTERFACE v14.7 - TACTICAL SCANNER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -63,12 +63,16 @@
         .chat-input-area input { background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 12px; flex: 1; font-family: monospace; font-size: 12px; outline: none; }
 
         /* Маркеры */
-        .custom-poi { width: 14px; height: 14px; background: var(--neon); border: 2px solid #000; transform: rotate(45deg); box-shadow: 0 0 15px var(--neon); border-radius: 2px; }
+        .custom-poi { width: 14px; height: 14px; background: var(--neon); border: 2px solid #000; transform: rotate(45deg); box-shadow: 0 0 15px var(--neon); border-radius: 2px; cursor: pointer; pointer-events: auto; }
         .maplibregl-popup { z-index: 500; }
         .marker-form { background: #000; border: 1px solid var(--neon); padding: 15px; color: var(--neon); min-width: 180px; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
         .marker-form input, .marker-form textarea { background: #111; border: 1px solid #333; color: #fff; width: 100%; margin: 8px 0; padding: 8px; font-size: 11px; outline: none; box-sizing: border-box; font-family: monospace; }
         .marker-form textarea { height: 50px; resize: none; }
         .marker-form button { background: var(--neon); border: none; color: #000; width: 100%; padding: 10px; cursor: pointer; font-weight: bold; letter-spacing: 1px; }
+
+        /* Тулбар информации POI */
+        .poi-info-panel { background: #000; border: 1px solid var(--neon); padding: 10px; color: var(--neon); font-size: 10px; min-width: 150px; text-transform: uppercase; }
+        .poi-info-panel b { color: #fff; display: block; margin-bottom: 5px; border-bottom: 1px solid var(--glass); }
     </style>
 </head>
 <body>
@@ -77,7 +81,7 @@
 
 <div id="chat-panel">
     <div class="chat-header">
-        <span>LINK_SECURE: <span style="color:#fff">MIL-SPEC-v14.6</span></span>
+        <span>LINK_SECURE: <span style="color:#fff">MIL-SPEC-v14.7</span></span>
         <div style="cursor:pointer" onclick="toggleChat()">[СВЕРНУТЬ]</div>
     </div>
     <div class="chat-messages" id="chat-msgs">
@@ -118,10 +122,10 @@
     </div>
 
     <div class="controls">
-        <button class="icon-btn" onclick="toggleVision()" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
-        <button class="icon-btn" id="poi-btn" onclick="enablePoiMode()" title="Mark POI"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
-        <button class="icon-btn" onclick="toggleScannerMask()" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
-        <button class="icon-btn" id="chat-btn" onclick="toggleChat()" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
+        <button class="icon-btn" onclick="menuAction('Режим визуализации', toggleVision)" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
+        <button class="icon-btn" id="poi-btn" onclick="menuAction('Маркировка сектора', enablePoiMode)" title="Mark POI"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
+        <button class="icon-btn" onclick="menuAction('Фильтр сканера', toggleScannerMask)" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
+        <button class="icon-btn" id="chat-btn" onclick="menuAction('Канал связи', toggleChat)" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
     </div>
 </div>
 
@@ -179,11 +183,16 @@
         window.speechSynthesis.speak(msg);
     }
 
+    function menuAction(label, fn) {
+        playBeep();
+        speak(label);
+        fn();
+    }
+
     function botResponse(userText) {
         let response = "";
         const text = userText.toLowerCase().trim();
         const c = mapBottom.getCenter();
-        const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
         playBeep();
 
@@ -192,9 +201,6 @@
         } 
         else if (text.includes("кто ты") || text.includes("идентификация")) {
             response = "Я тактический модуль управления огнем и навигацией. Мой позывной — Центр. Продолжайте выполнение задачи.";
-        }
-        else if (text.includes("как дела") || text.includes("состояние")) {
-            response = "Все системы в штатном режиме. Помехи в канале минимальны. Вижу ваше перемещение в реальном времени.";
         }
         else if (text.includes("координат") || text.includes("локац")) {
             response = `Внимание, даю точную привязку: Широта ${c.lat.toFixed(6)}, Долгота ${c.lng.toFixed(6)}. Спутниковая группировка подтверждает позицию.`;
@@ -333,9 +339,36 @@
     function savePoi(lng, lat) {
         const title = document.getElementById('poi-title').value || "ОБЪЕКТ";
         const desc = document.getElementById('poi-desc').value || "Без описания";
-        const el = document.createElement('div'); el.className = 'custom-poi';
         
-        new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
+        const el = document.createElement('div'); 
+        el.className = 'custom-poi';
+        
+        const marker = new maplibregl.Marker({ element: el })
+            .setLngLat([lng, lat])
+            .addTo(mapBottom);
+
+        // Интерактивность при клике на маркер
+        el.addEventListener('click', (e) => {
+            e.stopPropagation(); // Чтобы не срабатывал клик по карте
+            playBeep();
+            
+            const infoHtml = `
+                <div class="poi-info-panel">
+                    <b>${title}</b>
+                    ${desc}<br>
+                    <span style="font-size:8px; opacity:0.6; margin-top:5px; display:block;">
+                        LAT: ${lat.toFixed(5)} / LNG: ${lng.toFixed(5)}
+                    </span>
+                </div>
+            `;
+            
+            new maplibregl.Popup({ closeButton: false, anchor: 'bottom', offset: [0, -10] })
+                .setLngLat([lng, lat])
+                .setHTML(infoHtml)
+                .addTo(mapBottom);
+
+            speak(`Объект ${title}. ${desc}. Координаты: широта ${lat.toFixed(2)}, долгота ${lng.toFixed(2)}.`);
+        });
         
         appendMsg("ВЫ", `Установлен маркер: ${title}. ${desc}`);
         botResponse(`Данные по объекту ${title} занесены в тактический реестр. Сектор обновлен.`);
@@ -365,3 +398,4 @@
 </script>
 </body>
 </html>
+
