@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>NEURAL INTERFACE v14.9.4 - TACTICAL SCANNER</title>
+    <title>NEURAL INTERFACE v14.9.5 - TACTICAL SCANNER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -74,14 +74,14 @@
         }
         .ticker-content {
             display: inline-block;
-            padding-left: 100%;
-            animation: ticker 50s linear infinite;
+            padding-left: 0%;
+            animation: ticker 60s linear infinite;
             color: var(--neon);
             text-shadow: 0 0 5px var(--neon);
         }
         @keyframes ticker {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
         }
         
         .stat-indicator { display: inline-block; width: 8px; height: 8px; background: var(--neon); border-radius: 50%; margin-right: 6px; box-shadow: 0 0 8px var(--neon); animation: pulse-dot 1s infinite; vertical-align: middle; }
@@ -135,10 +135,11 @@
         .marker-form { background: #000; border: 1px solid var(--neon); padding: 15px; color: var(--neon); min-width: 180px; box-shadow: 0 0 20px rgba(0,0,0,0.8); pointer-events: auto; }
         .marker-form input, .marker-form textarea { background: #111; border: 1px solid #333; color: #fff; width: 100%; margin: 8px 0; padding: 8px; font-size: 11px; outline: none; box-sizing: border-box; font-family: monospace; }
         .marker-form textarea { height: 50px; resize: none; }
-        .marker-form button { background: var(--neon); border: none; color: #000; width: 100%; padding: 10px; cursor: pointer; font-weight: bold; letter-spacing: 1px; }
+        .marker-form button { background: var(--neon); border: none; color: #000; width: 100%; padding: 10px; cursor: pointer; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
 
-        .poi-info-panel { background: #000; border: 1px solid var(--neon); padding: 10px; color: var(--neon); font-size: 10px; min-width: 150px; text-transform: uppercase; box-shadow: 0 0 15px rgba(0,0,0,0.9); }
-        .poi-info-panel b { color: #fff; display: block; margin-bottom: 5px; border-bottom: 1px solid var(--glass); padding-bottom: 3px; }
+        .poi-info-panel { background: #000; border: 1px solid var(--neon); padding: 10px; color: #fff; font-size: 10px; min-width: 150px; text-transform: uppercase; box-shadow: 0 0 15px rgba(0,0,0,0.9); }
+        .poi-info-panel b { color: var(--neon); display: block; margin-bottom: 5px; border-bottom: 1px solid var(--glass); padding-bottom: 3px; font-size: 11px; letter-spacing: 1px; }
+        .poi-info-panel small { opacity: 0.5; font-size: 7px; margin-top: 8px; display: block; color: var(--neon); }
     </style>
 </head>
 <body>
@@ -199,8 +200,8 @@
 
     <div class="controls">
         <button class="icon-btn" onclick="menuAction('Режим визуализации', toggleVision)" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5-11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
+        <button class="icon-btn" onclick="menuAction('Фильтр сканера', toggleScannerMask)" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.66 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
         <button class="icon-btn" id="poi-btn" onclick="menuAction('Маркировка сектора', enablePoiMode)" title="Mark POI"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
-        <button class="icon-btn" onclick="menuAction('Фильтр сканера', toggleScannerMask)" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
         <button class="icon-btn" id="chat-btn" onclick="menuAction('Канал связи', toggleChat)" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
     </div>
 </div>
@@ -238,11 +239,12 @@
             const curr = data.current;
             const weatherDesc = { 0: "ЯСНО", 1: "ПРЕИМУЩЕСТВЕННО ЯСНО", 2: "ПЕРЕМЕННАЯ ОБЛАЧНОСТЬ", 3: "ПАСМУРНО", 45: "ТУМАН", 61: "ЛЕГКИЙ ДОЖДЬ", 71: "СНЕГ", 95: "ГРОЗА" };
             const status = weatherDesc[curr.weather_code] || "СТАБИЛЬНО";
-            const weatherText = `РЕГИОН: ${lat.toFixed(4)}N ${lng.toFixed(4)}E | СТАТУС: ${status} | ТЕМПЕРАТУРА: ${curr.temperature_2m}°C | ВЕТЕР: ${curr.wind_speed_10m} КМ/Ч | ВЛАЖНОСТЬ: ${curr.relative_humidity_2m}% | ДАВЛЕНИЕ: ${curr.surface_pressure} hPa`;
-            const fullTicker = `${weatherText} | ВНИМАНИЕ: ВСЕ ДАННЫЕ ПЕРЕДАЮТСЯ ПО ЗАШИФРОВАННОМУ КАНАЛУ | ${weatherText}`;
-            document.getElementById('weather-val').innerText = fullTicker;
+            const weatherText = `РЕГИОН: ${lat.toFixed(4)}N ${lng.toFixed(4)}E | СТАТУС: ${status} | ТЕМПЕРАТУРА: ${curr.temperature_2m}°C | ВЕТЕР: ${curr.wind_speed_10m} КМ/Ч | ВЛАЖНОСТЬ: ${curr.relative_humidity_2m}% | ДАВЛЕНИЕ: ${curr.surface_pressure} hPa | ВНИМАНИЕ: ВСЕ ДАННЫЕ ПЕРЕДАЮТСЯ ПО ЗАШИФРОВАННОМУ КАНАЛУ | ПОДТВЕРЖДЕНА СИНХРОНИЗАЦИЯ С ЦЕНТРОМ-9 | `;
+            
+            const tickerEl = document.getElementById('weather-val');
+            tickerEl.innerText = weatherText + weatherText + weatherText;
         } catch (e) {
-            document.getElementById('weather-val').innerText = "ОШИБКА МЕТЕО-СКАНИРОВАНИЯ. ДАННЫЕ УСТАРЕЛИ... ОЖИДАНИЕ ПЕРЕПОДКЛЮЧЕНИЯ...";
+            document.getElementById('weather-val').innerText = "ОШИБКА МЕТЕО-СКАНИРОВАНИЯ... ОЖИДАНИЕ ПЕРЕПОДКЛЮЧЕНИЯ... ";
         }
     }
 
@@ -309,87 +311,19 @@
         typing();
     }
 
-    // --- РАСШИРЕННЫЙ ИНТЕЛЛЕКТ БОТА ---
     function botResponse(userText) {
         const text = userText.toLowerCase().trim();
         const c = mapBottom.getCenter();
-        const t = new Date().toLocaleTimeString();
-        
         const responses = {
-            greetings: [
-                `Связь установлена. Оперативник, доложите обстановку в квадрате ${c.lat.toFixed(2)}N.`,
-                `Канал стабилен. Жду данных визуальной разведки. Как слышно?`,
-                `Терминал Центр-9 активен. Авторизация подтверждена. Слушаю.`
-            ],
-            status: [
-                `Сканирование завершено. Сектор стабилен. Радиофон в норме. Активных угроз не обнаружено.`,
-                `Проверка систем... Оптика в норме, спутниковый линк 100%. Обстановка в квадрате без изменений.`,
-                `Внимание: Зафиксированы незначительные помехи в северном секторе, вероятно гражданский трафик. Продолжайте наблюдение.`
-            ],
-            target_locked: [
-                `ВНИМАНИЕ: Визуальный контакт подтвержден. Объект в перекрестии. Вероятность попадания 98%.`,
-                `Цель захвачена. Сигнатура совпадает с приоритетными объектами. Жду команду.`,
-                `Телеметрия цели получена. Высота строения и плотность материалов проанализированы. Объект заблокирован.`
-            ],
-            coords: [
-                `Ваша позиция: широта ${c.lat.toFixed(6)}, долгота ${c.lng.toFixed(6)}. Смещение GPS в пределах 2-х метров.`,
-                `Триангуляция завершена. Вы находитесь в секторе контроля штаба. Данные записаны.`,
-                `Координаты подтверждены спутником. Сектор ${Math.floor(c.lat)}...${Math.floor(c.lng)} считается безопасным.`
-            ],
-            clear: [
-                `Принято. Центр-9 переходит в режим ожидания. Продолжайте визуальный мониторинг.`,
-                `Понял вас. Снимаю режим повышенной готовности. Конец связи.`,
-                `Рапорт принят. Логи очищены. Удачи, оперативник.`
-            ],
-            identity: [
-                `Я — тактический интерфейс "Центр-9". Обеспечиваю навигацию, триангуляцию и метеоанализ.`,
-                `Моя задача — ваша информационная поддержка. Я вижу то, что видят спутники.`,
-                `ИИ-модуль тактической разведки версии 14.9. К вашим услугам.`
-            ],
-            military: [
-                `Мониторинг частот управления БПЛА активен. Помех не обнаружено.`,
-                `Системы ПВО в радиусе 50км работают в штатном режиме. Горизонт чист.`,
-                `ВНИМАНИЕ: Обнаружена активность систем РЭБ в соседнем секторе. Будьте бдительны.`
-            ],
-            weather: [
-                `Метеосводка обновлена. Осадки не препятствуют работе лазерной дальнометрии.`,
-                `Видимость в норме. Скорость ветра позволяет использовать малоразмерные БПЛА.`,
-                `Температурный фон стабилен. Тепловизоры будут работать без искажений.`
-            ],
-            unknown: [
-                `Запрос обработан. Данные обновлены, но прямых совпадений в базе нет. Уточните доклад.`,
-                `Информация принята. Вношу в журнал наблюдений. Требуется ли детальный анализ?`,
-                `Ошибка интерпретации. Передаю запрос на расшифровку в штаб.`
-            ]
+            greetings: [`Связь установлена. Оперативник, доложите обстановку в квадрате ${c.lat.toFixed(2)}N.`, `Канал стабилен. Жду данных визуальной разведки.`, `Терминал Центр-9 активен.`],
+            status: [`Сканирование завершено. Сектор стабилен. Активных угроз не обнаружено.`, `Проверка систем... Оптика в норме, спутниковый линк 100%.`],
+            coords: [`Ваша позиция: широта ${c.lat.toFixed(6)}, долгота ${c.lng.toFixed(6)}.`, `Координаты подтверждены спутником.`],
+            clear: [`Принято. Центр-9 переходит в режим ожидания.`, `Рапорт принят. Логи очищены.`],
+            unknown: [`Запрос обработан. Вношу в журнал наблюдений.`, `Информация принята. Требуется ли детальный анализ?`]
         };
-
         const getRnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
-        let response = "";
-
-        if (text.includes("привет") || text.includes("здравствуй") || text.includes("на связи")) {
-            response = getRnd(responses.greetings);
-        } else if (text.includes("статус") || text.includes("обстановка") || text.includes("что там")) {
-            response = isTargetLocked ? getRnd(responses.target_locked) : getRnd(responses.status);
-        } else if (text.includes("коорд") || text.includes("где я") || text.includes("позиция")) {
-            response = getRnd(responses.coords);
-        } else if (text.includes("чисто") || text.includes("всё ок") || text.includes("отбой")) {
-            response = getRnd(responses.clear);
-        } else if (text.includes("цель") || text.includes("объект") || text.includes("захват")) {
-            response = isTargetLocked ? getRnd(responses.target_locked) : `ВНИМАНИЕ: Визуальный захват отсутствует. Центрируйте камеру на объекте.`;
-        } else if (text.includes("кто ты") || text.includes("центр") || text.includes("система")) {
-            response = getRnd(responses.identity);
-        } else if (text.includes("погода") || text.includes("ветер") || text.includes("видимость")) {
-            response = getRnd(responses.weather);
-        } else if (text.includes("дрон") || text.includes("бпла") || text.includes("пво") || text.includes("рэб")) {
-            response = getRnd(responses.military);
-        } else {
-            response = getRnd(responses.unknown);
-        }
-
-        setTimeout(() => {
-            appendMsg("ЦЕНТР", response, true);
-            speak(response);
-        }, 400);
+        let response = text.includes("статус") ? getRnd(responses.status) : (text.includes("коорд") ? getRnd(responses.coords) : (text.includes("чисто") ? getRnd(responses.clear) : getRnd(responses.unknown)));
+        setTimeout(() => { appendMsg("ЦЕНТР", response, true); speak(response); }, 400);
     }
 
     function sendMsg() {
@@ -502,19 +436,17 @@
                 .setHTML(`
                     <div class="poi-info-panel">
                         <b>${title}</b>
-                        ${desc}<br>
-                        <small style="opacity:0.5; font-size:7px; margin-top:5px; display:block;">COORDS: ${lat.toFixed(5)}, ${lng.toFixed(5)}</small>
+                        ${desc}
+                        <small>COORDS: ${lat.toFixed(5)}, ${lng.toFixed(5)}</small>
                     </div>
                 `)
                 .addTo(mapBottom);
-            
-            const voiceData = `${title}. ${desc}.`;
-            speak(voiceData);
+            speak(`${title}. ${desc}.`);
         });
 
         appendMsg("ВЫ", `Маркер: ${title}`);
         setTimeout(() => {
-            appendMsg("ЦЕНТР", `Объект "${title}" добавлен в тактическую сеть. Координаты подтверждены.`, true);
+            appendMsg("ЦЕНТР", `Объект "${title}" добавлен в тактическую сеть.`, true);
             speak(`Объект ${title} добавлен.`);
         }, 400);
     }
