@@ -21,12 +21,31 @@
         #map-bottom { z-index: 1; filter: brightness(0.25) grayscale(1); }
 
         /* HUD */
-        .hud { position: absolute; inset: 0; z-index: 200; pointer-events: none; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
-        .top-panels { display: flex; justify-content: space-between; align-items: flex-start; }
-        .telemetry-box { padding: 12px; font-size: 10px; line-height: 1.6; border-left: 2px solid var(--neon); background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); min-width: 220px; }
-        .telemetry-box b { color: #fff; letter-spacing: 1px; }
+        .hud { position: absolute; inset: 0; z-index: 200; pointer-events: none; padding: 0; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        /* ВЕРХНЯЯ ПЛАШКА */
+        .top-header-panel { 
+            width: 100%; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(10px); 
+            border-bottom: 1px solid var(--glass); 
+            padding: 10px 20px;
+            box-sizing: border-box;
+            pointer-events: auto;
+        }
 
-        .minimap-container { width: 260px; height: 120px; background: #000; position: relative; overflow: hidden; border: 1px solid rgba(50, 255, 126, 0.2); }
+        .telemetry-box { font-size: 10px; line-height: 1.6; border-left: 2px solid var(--neon); padding-left: 12px; min-width: 220px; }
+        .telemetry-box b { color: #fff; letter-spacing: 1px; }
+        
+        /* Пульсирующая точка */
+        .stat-indicator { display: inline-block; width: 8px; height: 8px; background: var(--neon); border-radius: 50%; margin-right: 6px; box-shadow: 0 0 8px var(--neon); animation: pulse-dot 1s infinite; vertical-align: middle; }
+        @keyframes pulse-dot { 0% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.7; } }
+        .stat-active { color: var(--neon) !important; text-transform: uppercase; }
+
+        .minimap-container { width: 200px; height: 80px; background: #000; position: relative; overflow: hidden; border: 1px solid rgba(50, 255, 126, 0.2); }
         #minimap { width: 100%; height: 100%; filter: saturate(0.5) brightness(0.8); }
         
         .user-dot-container { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
@@ -107,12 +126,12 @@
 </div>
 
 <div class="hud">
-    <div class="top-panels">
+    <div class="top-header-panel">
         <div class="telemetry-box" id="telemetry">
-            UNIT: <b>G-312 [ACTIVE]</b><br>
-            NET: <b>MIL-STD-188</b><br>
-            LOC: <b id="loc-name">ТРИАНГУЛЯЦИЯ...</b><br>
-            ALT: <b id="alt-val">0.00</b> M
+            Time: <b id="time-val">00:00:00</b><br>
+            Date: <b id="date-val">--.--.----</b><br>
+            Loc: <b id="loc-name">ТРИАНГУЛЯЦИЯ...</b><br>
+            Stat: <span class="stat-indicator"></span><b class="stat-active">active</b>
         </div>
         <div class="minimap-container"><div id="minimap"></div></div>
     </div>
@@ -157,6 +176,15 @@
 
     let isTargetLocked = false;
     let isAddingPoi = false;
+
+    // --- ОБНОВЛЕНИЕ ВРЕМЕНИ И ДАТЫ ---
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('time-val').innerText = now.toLocaleTimeString('ru-RU', { hour12: false });
+        document.getElementById('date-val').innerText = now.toLocaleDateString('ru-RU');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
     // --- АУДИО И ИИ ---
     function playBeep() {
@@ -288,7 +316,6 @@
         mapTop.jumpTo({ center: c, zoom: z, pitch: mapBottom.getPitch(), bearing: b });
         dirMarker.setLngLat(c);
         document.getElementById('loc-name').innerText = `${c.lat.toFixed(4)}N ${c.lng.toFixed(4)}E`;
-        document.getElementById('alt-val').innerText = (z * 14.2).toFixed(2);
         updateSelection();
     });
 
@@ -347,9 +374,8 @@
             .setLngLat([lng, lat])
             .addTo(mapBottom);
 
-        // Интерактивность при клике на маркер
         el.addEventListener('click', (e) => {
-            e.stopPropagation(); // Чтобы не срабатывал клик по карте
+            e.stopPropagation();
             playBeep();
             
             const infoHtml = `
@@ -398,4 +424,3 @@
 </script>
 </body>
 </html>
-
