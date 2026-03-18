@@ -14,11 +14,41 @@
         .overlay-fx { position: absolute; inset: 0; pointer-events: none; z-index: 150; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.005) 0px, transparent 1px); background-size: 100% 4px; }
         .overlay-fx::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.4) 100%); }
 
+        /* Эффект сетки непосредственно на карте */
+        .map-grid-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            background-image: 
+                linear-gradient(to right, rgba(50, 255, 126, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(50, 255, 126, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.5;
+        }
+
         /* Карта */
         .map-wrapper { position: absolute; inset: 0; transition: filter 0.4s; }
         .map-layer { position: absolute; inset: 0; }
         #map-top { z-index: 2; -webkit-mask-image: radial-gradient(circle, black 120px, transparent 200px); mask-image: radial-gradient(circle, black 120px, transparent 200px); pointer-events: none; opacity: 1; transition: opacity 0.3s; }
-        #map-bottom { z-index: 1; filter: brightness(0.25) grayscale(1); }
+        #map-bottom { z-index: 1; filter: brightness(0.25) grayscale(1); transition: opacity 0.5s ease-in-out, filter 0.5s ease; }
+        
+        /* Эффект при смене подложки */
+        .glitch-flash {
+            animation: flash-anim 0.4s ease-out forwards;
+        }
+        @keyframes flash-anim {
+            0% { opacity: 1; filter: brightness(5) white-balance(100%); }
+            100% { opacity: 0; filter: brightness(1); }
+        }
+        #transition-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--neon);
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+        }
 
         /* HUD */
         .hud { position: absolute; inset: 0; z-index: 200; pointer-events: none; padding: 0; display: flex; flex-direction: column; justify-content: space-between; }
@@ -39,6 +69,28 @@
 
         .telemetry-box { font-size: 10px; line-height: 1.6; border-left: 2px solid var(--neon); padding-left: 12px; min-width: 220px; }
         .telemetry-box b { color: #fff; letter-spacing: 1px; }
+
+        /* Бегущая строка */
+        .weather-ticker {
+            width: 100%;
+            background: transparent;
+            border-bottom: 1px solid var(--glass);
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 4px 0;
+            font-size: 9px;
+            letter-spacing: 1px;
+            pointer-events: auto;
+        }
+        .ticker-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: ticker 40s linear infinite;
+        }
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
         
         /* Пульсирующая точка */
         .stat-indicator { display: inline-block; width: 8px; height: 8px; background: var(--neon); border-radius: 50%; margin-right: 6px; box-shadow: 0 0 8px var(--neon); animation: pulse-dot 1s infinite; vertical-align: middle; }
@@ -97,10 +149,11 @@
 <body>
 
 <div class="overlay-fx"></div>
+<div id="transition-overlay"></div>
 
 <div id="chat-panel">
     <div class="chat-header">
-        <span>LINK_SECURE: <span style="color:#fff">MIL-SPEC-v14.7</span></span>
+        <span>LINK_SECURE: <span style="color:#fff">Центр-9</span></span>
         <div style="cursor:pointer" onclick="toggleChat()">[СВЕРНУТЬ]</div>
     </div>
     <div class="chat-messages" id="chat-msgs">
@@ -122,18 +175,27 @@
 
 <div class="map-wrapper">
     <div id="map-bottom" class="map-layer"></div>
+    <div class="map-grid-overlay"></div>
     <div id="map-top" class="map-layer"></div>
 </div>
 
 <div class="hud">
-    <div class="top-header-panel">
-        <div class="telemetry-box" id="telemetry">
-            Time: <b id="time-val">00:00:00</b><br>
-            Date: <b id="date-val">--.--.----</b><br>
-            Loc: <b id="loc-name">ТРИАНГУЛЯЦИЯ...</b><br>
-            Stat: <span class="stat-indicator"></span><b class="stat-active">active</b>
+    <div>
+        <div class="top-header-panel">
+            <div class="telemetry-box" id="telemetry">
+                Time: <b id="time-val">00:00:00</b><br>
+                Date: <b id="date-val">--.--.----</b><br>
+                Loc: <b id="loc-name">ТРИАНГУЛЯЦИЯ...</b><br>
+                Satel: <b id="sat-val">24 ACTIVE</b><br>
+                Stat: <span class="stat-indicator"></span><b class="stat-active">active</b>
+            </div>
+            <div class="minimap-container"><div id="minimap"></div></div>
         </div>
-        <div class="minimap-container"><div id="minimap"></div></div>
+        <div class="weather-ticker">
+            <div class="ticker-content" id="weather-val">
+                ПОЛУЧЕНИЕ ДАННЫХ МЕТЕОСЛУЖБЫ... СКАНИРОВАНИЕ ЛОКАЛЬНЫХ СЛОЕВ АТМОСФЕРЫ...
+            </div>
+        </div>
     </div>
     
     <div class="crosshair" id="main-crosshair">
@@ -177,11 +239,41 @@
     let isTargetLocked = false;
     let isAddingPoi = false;
 
+    // --- ГЕОЛОКАЦИЯ И ПОГОДА ---
+    function updateLocationAndWeather(pos) {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const center = [lng, lat];
+        
+        mapBottom.jumpTo({ center });
+        mapTop.jumpTo({ center });
+        miniMap.jumpTo({ center });
+        dirMarker.setLngLat(center);
+
+        // Симуляция получения данных на основе координат
+        const cityKey = (lat.toFixed(0) % 2 === 0) ? "СЕВЕРНЫЙ" : "ЮЖНЫЙ";
+        const temp = 10 + Math.floor(Math.random() * 15);
+        const wind = 3 + Math.floor(Math.random() * 7);
+        const weatherText = `РЕГИОН: ${lat.toFixed(4)}N ${lng.toFixed(4)}E | СТАТУС: ЧИСТО | ТЕМПЕРАТУРА: +${temp}°C | ВЕТЕР: ${wind} М/С | ОСАДКИ: 0% | ВИДИМОСТЬ: ВЫСОКАЯ | АНОМАЛИИ: НЕ ОБНАРУЖЕНЫ`;
+        
+        document.getElementById('weather-val').innerText = `${weatherText} | ${weatherText}`;
+    }
+
+    navigator.geolocation.getCurrentPosition(updateLocationAndWeather, (err) => {
+        console.warn("Geo access denied", err);
+        // Fallback text if denied
+        document.getElementById('weather-val').innerText = "ОШИБКА ДОСТУПА К ГЕОПОЗИЦИИ... ИСПОЛЬЗУЮТСЯ ДЕФОЛТНЫЕ ПАРАМЕТРЫ СЕКТОРА...";
+    });
+
     // --- ОБНОВЛЕНИЕ ВРЕМЕНИ И ДАТЫ ---
     function updateClock() {
         const now = new Date();
         document.getElementById('time-val').innerText = now.toLocaleTimeString('ru-RU', { hour12: false });
         document.getElementById('date-val').innerText = now.toLocaleDateString('ru-RU');
+        
+        if (Math.random() > 0.95) {
+            const count = 20 + Math.floor(Math.random() * 8);
+            document.getElementById('sat-val').innerText = `${count} ACTIVE`;
+        }
     }
     setInterval(updateClock, 1000);
     updateClock();
@@ -404,6 +496,11 @@
     }
 
     function toggleVision() {
+        const overlay = document.getElementById('transition-overlay');
+        overlay.classList.remove('glitch-flash');
+        void overlay.offsetWidth; // Trigger reflow
+        overlay.classList.add('glitch-flash');
+
         const isSat = mapBottom.getStyle().layers.some(l => l.id === 'sat');
         mapBottom.setStyle(isSat ? STYLES.vector : STYLES.satellite);
     }
@@ -416,10 +513,6 @@
         c.opacity = state;
     }
 
-    navigator.geolocation.getCurrentPosition(p => {
-        mapBottom.jumpTo({ center: [p.coords.longitude, p.coords.latitude] });
-    });
-    
     window.speechSynthesis.getVoices();
 </script>
 </body>
