@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        :root { --neon: #32ff7e; --glass: rgba(0, 0, 0, 0.6); }
+        :root { --neon: #32ff7e; --glass: rgba(0, 255, 126, 0.1); }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: var(--neon); }
         
         .map-wrapper { position: absolute; inset: 0; transition: filter 0.4s; }
@@ -21,64 +21,76 @@
         }
         #map-bottom { z-index: 1; filter: brightness(0.25) grayscale(1); }
 
+        /* HUD */
         .hud { position: absolute; inset: 0; z-index: 200; pointer-events: none; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
-        
         .top-panels { display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
 
-        /* Убрана подложка (background) */
         .telemetry-box {
-            padding: 10px;
-            font-size: 10px;
-            line-height: 1.4;
-            border-left: 2px solid var(--neon);
-            text-transform: uppercase;
-            min-width: 220px;
-            text-shadow: 2px 2px 4px #000; /* Добавлено для читаемости без фона */
+            padding: 10px; font-size: 10px; line-height: 1.4; border-left: 2px solid var(--neon);
+            text-transform: uppercase; min-width: 220px; text-shadow: 2px 2px 4px #000;
         }
         .telemetry-box b { color: #fff; }
 
-        /* Мини-карта шире (260px) */
         .minimap-container {
-            width: 260px;
-            height: 120px;
-            background: #000;
-            position: relative;
-            overflow: hidden;
+            width: 260px; height: 120px; background: #000; position: relative; overflow: hidden;
             border-bottom: 1px solid rgba(50, 255, 126, 0.3);
-            pointer-events: none;
         }
         #minimap { width: 100%; height: 100%; filter: saturate(0.6) brightness(0.7); }
         
-        .user-dot {
-            width: 8px; height: 8px;
-            background: var(--neon);
-            border-radius: 50%;
-            box-shadow: 0 0 10px var(--neon);
-            position: relative;
-        }
-        .user-dot::after {
-            content: ''; position: absolute; top: -10px; left: 3px;
-            width: 2px; height: 10px; background: var(--neon);
-            box-shadow: 0 0 5px var(--neon);
+        /* Исправленная стрелка без точки */
+        .user-dot-container { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+        .user-dir { 
+            width: 0; height: 0; 
+            border-left: 6px solid transparent; border-right: 6px solid transparent; 
+            border-bottom: 12px solid var(--neon); filter: drop-shadow(0 0 5px var(--neon));
         }
 
         .crosshair { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             width: 300px; height: 300px; border: 1px solid rgba(50, 255, 126, 0.05); border-radius: 50%; 
         }
-        .target-data {
-            position: absolute; top: calc(50% + 20px); left: calc(50% + 20px);
-            font-size: 9px; letter-spacing: 1px; text-shadow: 0 0 5px #000;
-        }
+        .target-data { position: absolute; top: calc(50% + 20px); left: calc(50% + 20px); font-size: 9px; letter-spacing: 1px; }
 
-        .controls { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-bottom: 40px; pointer-events: auto; }
-        .btn { 
-            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(50, 255, 126, 0.3); 
-            color: var(--neon); padding: 10px 30px; cursor: pointer; 
-            text-transform: uppercase; letter-spacing: 3px; font-size: 11px;
-            width: 280px;
+        .controls { 
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: row; gap: 15px; padding: 10px 25px;
+            background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(4px); border-radius: 4px; pointer-events: auto; z-index: 300;
         }
-        .btn:hover { background: rgba(50, 255, 126, 0.1); }
+        .icon-btn { background: none; border: none; color: var(--neon); cursor: pointer; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; opacity: 0.6; }
+        .icon-btn:hover, .icon-btn.active { opacity: 1; filter: drop-shadow(0 0 8px var(--neon)); }
+        .icon-btn svg { width: 26px; height: 26px; fill: currentColor; }
+
+        /* ЧАТ ПАНЕЛЬ */
+        #chat-panel {
+            position: absolute; right: -300px; top: 0; bottom: 0; width: 280px;
+            background: rgba(0, 10, 0, 0.85); backdrop-filter: blur(10px);
+            border-left: 1px solid var(--neon); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 400; pointer-events: auto; display: flex; flex-direction: column;
+        }
+        #chat-panel.open { right: 0; }
+        
+        .chat-header { 
+            padding: 20px 15px 10px; font-size: 12px; 
+            border-bottom: 1px solid rgba(50, 255, 126, 0.2); 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .close-chat { 
+            cursor: pointer; color: var(--neon); opacity: 0.7; transition: 0.2s; 
+            padding: 5px; font-weight: bold; font-size: 16px;
+        }
+        .close-chat:hover { opacity: 1; text-shadow: 0 0 8px var(--neon); }
+
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; font-size: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { border-left: 1px solid var(--neon); padding-left: 8px; }
+        .msg b { color: #fff; display: block; margin-bottom: 2px; }
+        .chat-input-area { padding: 15px; border-top: 1px solid rgba(50, 255, 126, 0.2); display: flex; gap: 5px; }
+        .chat-input-area input { background: #000; border: 1px solid var(--neon); color: var(--neon); padding: 8px; flex: 1; font-family: monospace; font-size: 10px; outline: none;}
+
+        .marker-form { background: rgba(0,0,0,0.9); border: 1px solid var(--neon); padding: 15px; color: var(--neon); font-family: monospace; min-width: 180px; pointer-events: auto; }
+        .marker-form input, .marker-form textarea { background: #111; border: 1px solid #333; color: #fff; width: 100%; margin: 5px 0; padding: 5px; font-size: 11px; }
+        .marker-form button { background: var(--neon); border: none; color: #000; width: 100%; padding: 8px; cursor: pointer; font-weight: bold; }
+        .custom-poi { width: 12px; height: 12px; background: #fff; border: 2px solid var(--neon); transform: rotate(45deg); box-shadow: 0 0 10px var(--neon); }
+        .maplibregl-popup-content { background: rgba(0,0,0,0.8) !important; color: var(--neon) !important; border: 1px solid var(--neon); border-radius: 0; }
         
         .overlay-fx { position: absolute; inset: 0; pointer-events: none; z-index: 150; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.005) 0px, transparent 1px); background-size: 100% 4px; }
     </style>
@@ -86,6 +98,23 @@
 <body>
 
 <div class="overlay-fx"></div>
+
+<div id="chat-panel">
+    <div class="chat-header">
+        <span>LOCAL_NET: <span style="color:#fff">CONNECTED</span></span>
+        <div class="close-chat" onclick="toggleChat()">[X]</div>
+    </div>
+    <div class="chat-messages" id="chat-msgs">
+        <div class="msg"><b>SYS_BOT</b>Welcome to the local neural net. Nodes detected: 14</div>
+        <div class="msg"><b>User_821</b>Anyone near the central plaza?</div>
+        <div class="msg"><b>NetRunner</b>Scanning buildings... quiet night.</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="chat-input" placeholder="MESSAGE..." onkeydown="if(event.key==='Enter') sendMsg()">
+        <button onclick="sendMsg()" style="background:var(--neon); border:none; padding:0 10px; cursor:pointer">></button>
+    </div>
+</div>
+
 <div class="map-wrapper" id="master-wrapper">
     <div id="map-bottom" class="map-layer"></div>
     <div id="map-top" class="map-layer"></div>
@@ -96,14 +125,9 @@
         <div class="telemetry-box" id="telemetry">
             ENV: <b>ACTIVE_SCAN</b><br>
             LOC: <b id="loc-name">CALCULATING...</b><br>
-            WTHR: <b>CLEAR / 18.1°C</b><br>
-            AIR: <b>AQI 42 (GOOD)</b><br>
-            CO2: <b>415.2 PPM</b>
+            STAT: <b id="status-text">IDLE</b>
         </div>
-
-        <div class="minimap-container">
-            <div id="minimap"></div>
-        </div>
+        <div class="minimap-container"><div id="minimap"></div></div>
     </div>
     
     <div class="crosshair" id="main-crosshair">
@@ -111,8 +135,10 @@
     </div>
 
     <div class="controls">
-        <button class="btn" onclick="toggleVision()">Viewport Mode</button>
-        <button class="btn" onclick="toggleScannerMask()">Scanner Circle: ON/OFF</button>
+        <button class="icon-btn" onclick="toggleVision()" title="Layers"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
+        <button class="icon-btn" id="poi-btn" onclick="enablePoiMode()" title="Add Marker"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
+        <button class="icon-btn" onclick="toggleScannerMask()" title="Scanner"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
+        <button class="icon-btn" id="chat-btn" onclick="toggleChat()" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
     </div>
 </div>
 
@@ -126,88 +152,107 @@
     };
 
     const config = { center: [30.5234, 50.4501], zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
-    
     const mapBottom = new maplibregl.Map({ container: 'map-bottom', style: STYLES.vector, ...config });
     const mapTop = new maplibregl.Map({ container: 'map-top', style: STYLES.vector, ...config, interactionHandlers: false });
+    
+    // Синхронизация мини-карты
     const miniMap = new maplibregl.Map({ 
         container: 'minimap', 
         style: STYLES.satellite, 
         center: config.center, 
         zoom: 14, 
+        bearing: config.bearing, // Синхронизируем начальный угол
         interactive: false, 
         attributionControl: false 
     });
 
-    const el = document.createElement('div');
-    el.className = 'user-dot';
-    const marker = new maplibregl.Marker({ element: el }).setLngLat(config.center).addTo(miniMap);
+    const elContainer = document.createElement('div');
+    elContainer.className = 'user-dot-container';
+    elContainer.innerHTML = '<div class="user-dir" id="dir-arrow"></div>'; // Убрана точка
+    const dirMarker = new maplibregl.Marker({ element: elContainer }).setLngLat(config.center).addTo(miniMap);
 
-    // Добавляем слой для выделения на мини-карту
-    miniMap.on('load', () => {
-        miniMap.addSource('mini-carto', { type: 'vector', url: 'https://tiles.basemaps.cartocdn.com/vector/carto.streets.v1/tiles.json' });
-        miniMap.addLayer({
-            'id': 'mini-building-highlight', 'source': 'mini-carto', 'source-layer': 'building', 'type': 'fill',
-            'paint': { 'fill-color': '#ffffff', 'fill-opacity': 0.8 },
-            'filter': ['==', ['id'], '']
-        });
+    let isAddingPoi = false;
+    let activePopup = null;
+
+    function enablePoiMode() {
+        isAddingPoi = !isAddingPoi;
+        document.getElementById('poi-btn').classList.toggle('active', isAddingPoi);
+        document.getElementById('status-text').innerText = isAddingPoi ? "WAITING_FOR_CLICK" : "IDLE";
+        mapBottom.getCanvas().style.cursor = isAddingPoi ? 'crosshair' : '';
+    }
+
+    mapBottom.on('click', (e) => {
+        if (!isAddingPoi) return;
+        const coords = e.lngLat;
+        activePopup = new maplibregl.Popup({ closeButton: false }).setLngLat(coords).setHTML(`
+            <div class="marker-form">
+                <input type="text" id="poi-title" placeholder="NAME...">
+                <textarea id="poi-desc" placeholder="DATA..."></textarea>
+                <button onclick="savePoi(${coords.lng}, ${coords.lat})">UPLOAD</button>
+            </div>
+        `).addTo(mapBottom);
+        enablePoiMode();
     });
+
+    function savePoi(lng, lat) {
+        const title = document.getElementById('poi-title').value || "UNKNOWN";
+        const el = document.createElement('div'); el.className = 'custom-poi';
+        new maplibregl.Marker({ element: el }).setLngLat([lng, lat])
+            .setPopup(new maplibregl.Popup().setHTML(`<b>${title}</b><br>${document.getElementById('poi-desc').value}`))
+            .addTo(mapBottom);
+        if (activePopup) activePopup.remove();
+    }
+
+    function toggleChat() {
+        const panel = document.getElementById('chat-panel');
+        const btn = document.getElementById('chat-btn');
+        panel.classList.toggle('open');
+        btn.classList.toggle('active');
+        document.getElementById('status-text').innerText = panel.classList.contains('open') ? "COMMS_OPEN" : "IDLE";
+    }
+
+    function sendMsg() {
+        const input = document.getElementById('chat-input');
+        if (!input.value) return;
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'msg';
+        msgDiv.innerHTML = `<b>YOU</b>${input.value}`;
+        document.getElementById('chat-msgs').appendChild(msgDiv);
+        input.value = '';
+        const box = document.getElementById('chat-msgs');
+        box.scrollTop = box.scrollHeight;
+    }
 
     mapBottom.on('move', () => {
-        const center = mapBottom.getCenter();
-        const zoom = mapBottom.getZoom();
-        const bearing = mapBottom.getBearing();
-        const pitch = mapBottom.getPitch();
+        const c = mapBottom.getCenter();
+        const z = mapBottom.getZoom();
+        const b = mapBottom.getBearing();
+        const p = mapBottom.getPitch();
 
-        miniMap.jumpTo({ center, bearing, zoom: Math.max(zoom - 2.5, 12) });
-        mapTop.jumpTo({ center, zoom, pitch, bearing });
-        marker.setLngLat(center);
+        // Мини-карта теперь вращается синхронно с подложкой
+        miniMap.jumpTo({ 
+            center: c, 
+            bearing: b, // Синхронное вращение
+            zoom: Math.max(z - 2.5, 12) 
+        });
         
-        document.getElementById('loc-name').innerText = `${center.lat.toFixed(4)}N ${center.lng.toFixed(4)}E`;
+        mapTop.jumpTo({ center: c, zoom: z, pitch: p, bearing: b });
+        dirMarker.setLngLat(c);
+        
+        // Стрелка теперь всегда смотрит "вверх" (вперед по взгляду камеры), так как вращается сама карта
+        document.getElementById('loc-name').innerText = `${c.lat.toFixed(4)}N ${c.lng.toFixed(4)}E`;
         updateSelection();
     });
-
-    let hoveredBuildingId = null;
-    function updateSelection() {
-        const centerPoint = [window.innerWidth / 2, window.innerHeight / 2];
-        const features = mapTop.queryRenderedFeatures(centerPoint, { layers: ['top-3d'] });
-        const infoBox = document.getElementById('target-info');
-
-        if (features.length > 0) {
-            const id = features[0].id;
-            if (id !== hoveredBuildingId) {
-                hoveredBuildingId = id;
-                mapTop.setFilter('building-highlight', ['==', ['id'], id]);
-                // Дублируем выделение на мини-карте белым цветом
-                if (miniMap.getLayer('mini-building-highlight')) {
-                    miniMap.setFilter('mini-building-highlight', ['==', ['id'], id]);
-                }
-                infoBox.innerHTML = `TARGET_LOCKED<br>ID: ${id.toString().slice(0,8)}`;
-            }
-        } else {
-            if (hoveredBuildingId !== null) {
-                hoveredBuildingId = null;
-                mapTop.setFilter('building-highlight', ['==', ['id'], '']);
-                if (miniMap.getLayer('mini-building-highlight')) {
-                    miniMap.setFilter('mini-building-highlight', ['==', ['id'], '']);
-                }
-                infoBox.innerHTML = '';
-            }
-        }
-    }
 
     function initBuildings(map, id, isTop) {
         map.on('style.load', () => {
             const src = 'carto';
-            // Если стиля нет, добавляем источник вручную для надежности
-            if (!map.getSource(src)) {
-                map.addSource(src, { type: 'vector', url: 'https://tiles.basemaps.cartocdn.com/vector/carto.streets.v1/tiles.json' });
-            }
+            if (!map.getSource(src)) map.addSource(src, { type: 'vector', url: 'https://tiles.basemaps.cartocdn.com/vector/carto.streets.v1/tiles.json' });
             map.addLayer({
                 'id': id, 'source': src, 'source-layer': 'building', 'type': 'fill-extrusion',
                 'paint': {
                     'fill-extrusion-color': isTop ? '#333' : '#050505',
                     'fill-extrusion-height': ['get', 'render_height'],
-                    'fill-extrusion-base': ['get', 'render_min_height'],
                     'fill-extrusion-opacity': isTop ? 0.8 : 0.5
                 }
             });
@@ -224,30 +269,33 @@
     initBuildings(mapBottom, 'bot-3d', false);
     initBuildings(mapTop, 'top-3d', true);
 
+    function updateSelection() {
+        const features = mapTop.queryRenderedFeatures([window.innerWidth/2, window.innerHeight/2], { layers: ['top-3d'] });
+        const info = document.getElementById('target-info');
+        if (features.length > 0) {
+            const id = features[0].id;
+            mapTop.setFilter('building-highlight', ['==', ['id'], id]);
+            info.innerHTML = `TARGET_LOCKED<br>ID: ${id.toString().slice(0,8)}`;
+        } else {
+            mapTop.setFilter('building-highlight', ['==', ['id'], '']);
+            info.innerHTML = '';
+        }
+    }
+
     function toggleVision() {
         const isSat = mapBottom.getStyle().layers.some(l => l.id === 'sat');
         mapBottom.setStyle(isSat ? STYLES.vector : STYLES.satellite);
     }
 
-    // Логика отключения/включения круга
-    let scannerVisible = true;
     function toggleScannerMask() {
-        scannerVisible = !scannerVisible;
-        const topMapEl = document.getElementById('map-top');
-        const crosshairEl = document.getElementById('main-crosshair');
-        
-        if (scannerVisible) {
-            topMapEl.style.opacity = "1";
-            crosshairEl.style.opacity = "1";
-        } else {
-            topMapEl.style.opacity = "0";
-            crosshairEl.style.opacity = "0";
-        }
+        const s = document.getElementById('map-top').style;
+        const c = document.getElementById('main-crosshair').style;
+        s.opacity = (s.opacity === "0") ? "1" : "0";
+        c.opacity = s.opacity;
     }
 
     navigator.geolocation.getCurrentPosition(pos => {
-        const userLoc = [pos.coords.longitude, pos.coords.latitude];
-        mapBottom.flyTo({ center: userLoc, zoom: 17 });
+        mapBottom.jumpTo({ center: [pos.coords.longitude, pos.coords.latitude] });
     });
 </script>
 </body>
