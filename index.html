@@ -60,19 +60,24 @@
 
         .weather-ticker {
             width: 100%;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.6);
             overflow: hidden;
             white-space: nowrap;
-            padding: 6px 0;
-            font-size: 9px;
+            padding: 8px 0;
+            font-size: 10px;
             letter-spacing: 1px;
             pointer-events: auto;
-            border: none; 
+            border-top: 1px solid var(--glass);
+            border-bottom: 1px solid var(--glass);
+            position: relative;
+            z-index: 210;
         }
         .ticker-content {
             display: inline-block;
             padding-left: 100%;
-            animation: ticker 45s linear infinite;
+            animation: ticker 50s linear infinite;
+            color: var(--neon);
+            text-shadow: 0 0 5px var(--neon);
         }
         @keyframes ticker {
             0% { transform: translate3d(0, 0, 0); }
@@ -183,7 +188,7 @@
         </div>
         <div class="weather-ticker">
             <div class="ticker-content" id="weather-val">
-                ПОЛУЧЕНИЕ ДАННЫХ МЕТЕОСЛУЖБЫ... СКАНИРОВАНИЕ ЛОКАЛЬНЫХ СЛОЕВ АТМОСФЕРЫ...
+                ПОЛУЧЕНИЕ ДАННЫХ МЕТЕОСЛУЖБЫ... СКАНИРОВАНИЕ ЛОКАЛЬНЫХ СЛОЕВ АТМОСФЕРЫ... СИНХРОНИЗАЦИЯ СО СПУТНИКОВОЙ ГРУППИРОВКОЙ...
             </div>
         </div>
     </div>
@@ -209,7 +214,6 @@
         }
     };
 
-    // Дефолтный центр (Киев), если геолокация недоступна
     let currentCenter = [30.5234, 50.4501];
     const config = { center: currentCenter, zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
 
@@ -235,31 +239,26 @@
             const weatherDesc = { 0: "ЯСНО", 1: "ПРЕИМУЩЕСТВЕННО ЯСНО", 2: "ПЕРЕМЕННАЯ ОБЛАЧНОСТЬ", 3: "ПАСМУРНО", 45: "ТУМАН", 61: "ЛЕГКИЙ ДОЖДЬ", 71: "СНЕГ", 95: "ГРОЗА" };
             const status = weatherDesc[curr.weather_code] || "СТАБИЛЬНО";
             const weatherText = `РЕГИОН: ${lat.toFixed(4)}N ${lng.toFixed(4)}E | СТАТУС: ${status} | ТЕМПЕРАТУРА: ${curr.temperature_2m}°C | ВЕТЕР: ${curr.wind_speed_10m} КМ/Ч | ВЛАЖНОСТЬ: ${curr.relative_humidity_2m}% | ДАВЛЕНИЕ: ${curr.surface_pressure} hPa`;
-            document.getElementById('weather-val').innerText = `${weatherText} | ${weatherText}`;
+            const fullTicker = `${weatherText} | ВНИМАНИЕ: ВСЕ ДАННЫЕ ПЕРЕДАЮТСЯ ПО ЗАШИФРОВАННОМУ КАНАЛУ | ${weatherText}`;
+            document.getElementById('weather-val').innerText = fullTicker;
         } catch (e) {
-            document.getElementById('weather-val').innerText = "ОШИБКА МЕТЕО-СКАНИРОВАНИЯ. ДАННЫЕ УСТАРЕЛИ...";
+            document.getElementById('weather-val').innerText = "ОШИБКА МЕТЕО-СКАНИРОВАНИЯ. ДАННЫЕ УСТАРЕЛИ... ОЖИДАНИЕ ПЕРЕПОДКЛЮЧЕНИЯ...";
         }
     }
 
-    // ИНИЦИАЛИЗАЦИЯ ГЕОЛОКАЦИИ ПОЛЬЗОВАТЕЛЯ
     function initUserLocation() {
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition((pos) => {
                 const { latitude: lat, longitude: lng } = pos.coords;
                 currentCenter = [lng, lat];
-                
-                // Центрируем все карты на пользователе
                 mapBottom.jumpTo({ center: currentCenter });
                 mapTop.jumpTo({ center: currentCenter });
                 miniMap.jumpTo({ center: currentCenter });
                 dirMarker.setLngLat(currentCenter);
-                
                 document.getElementById('loc-name').innerText = `${lat.toFixed(4)}N ${lng.toFixed(4)}E`;
-                
                 fetchWeatherData(lat, lng);
                 appendMsg("СИСТЕМА", `Геопозиция синхронизирована: Квадрат ${lat.toFixed(2)}N ${lng.toFixed(2)}E`, true);
             }, (err) => {
-                console.warn("Геолокация недоступна:", err.message);
                 fetchWeatherData(currentCenter[1], currentCenter[0]);
             }, { enableHighAccuracy: true });
         } else {
@@ -310,43 +309,81 @@
         typing();
     }
 
-    // --- ИНТЕЛЛЕКТ БОТА ---
+    // --- РАСШИРЕННЫЙ ИНТЕЛЛЕКТ БОТА ---
     function botResponse(userText) {
         const text = userText.toLowerCase().trim();
         const c = mapBottom.getCenter();
         const t = new Date().toLocaleTimeString();
         
+        const responses = {
+            greetings: [
+                `Связь установлена. Оперативник, доложите обстановку в квадрате ${c.lat.toFixed(2)}N.`,
+                `Канал стабилен. Жду данных визуальной разведки. Как слышно?`,
+                `Терминал Центр-9 активен. Авторизация подтверждена. Слушаю.`
+            ],
+            status: [
+                `Сканирование завершено. Сектор стабилен. Радиофон в норме. Активных угроз не обнаружено.`,
+                `Проверка систем... Оптика в норме, спутниковый линк 100%. Обстановка в квадрате без изменений.`,
+                `Внимание: Зафиксированы незначительные помехи в северном секторе, вероятно гражданский трафик. Продолжайте наблюдение.`
+            ],
+            target_locked: [
+                `ВНИМАНИЕ: Визуальный контакт подтвержден. Объект в перекрестии. Вероятность попадания 98%.`,
+                `Цель захвачена. Сигнатура совпадает с приоритетными объектами. Жду команду.`,
+                `Телеметрия цели получена. Высота строения и плотность материалов проанализированы. Объект заблокирован.`
+            ],
+            coords: [
+                `Ваша позиция: широта ${c.lat.toFixed(6)}, долгота ${c.lng.toFixed(6)}. Смещение GPS в пределах 2-х метров.`,
+                `Триангуляция завершена. Вы находитесь в секторе контроля штаба. Данные записаны.`,
+                `Координаты подтверждены спутником. Сектор ${Math.floor(c.lat)}...${Math.floor(c.lng)} считается безопасным.`
+            ],
+            clear: [
+                `Принято. Центр-9 переходит в режим ожидания. Продолжайте визуальный мониторинг.`,
+                `Понял вас. Снимаю режим повышенной готовности. Конец связи.`,
+                `Рапорт принят. Логи очищены. Удачи, оперативник.`
+            ],
+            identity: [
+                `Я — тактический интерфейс "Центр-9". Обеспечиваю навигацию, триангуляцию и метеоанализ.`,
+                `Моя задача — ваша информационная поддержка. Я вижу то, что видят спутники.`,
+                `ИИ-модуль тактической разведки версии 14.9. К вашим услугам.`
+            ],
+            military: [
+                `Мониторинг частот управления БПЛА активен. Помех не обнаружено.`,
+                `Системы ПВО в радиусе 50км работают в штатном режиме. Горизонт чист.`,
+                `ВНИМАНИЕ: Обнаружена активность систем РЭБ в соседнем секторе. Будьте бдительны.`
+            ],
+            weather: [
+                `Метеосводка обновлена. Осадки не препятствуют работе лазерной дальнометрии.`,
+                `Видимость в норме. Скорость ветра позволяет использовать малоразмерные БПЛА.`,
+                `Температурный фон стабилен. Тепловизоры будут работать без искажений.`
+            ],
+            unknown: [
+                `Запрос обработан. Данные обновлены, но прямых совпадений в базе нет. Уточните доклад.`,
+                `Информация принята. Вношу в журнал наблюдений. Требуется ли детальный анализ?`,
+                `Ошибка интерпретации. Передаю запрос на расшифровку в штаб.`
+            ]
+        };
+
+        const getRnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
         let response = "";
 
-        if (text.includes("привет") || text.includes("здравствуй")) {
-            response = `Связь установлена. Оперативник, доложите обстановку в квадрате ${c.lat.toFixed(2)} северной широты.`;
-        } else if (text.includes("статус") || text.includes("обстановка")) {
-            response = isTargetLocked 
-                ? `ВНИМАНИЕ: Визуальный контакт подтвержден. Объект в перекрестии. Вероятность попадания 98%. Жду подтверждения на поражение.` 
-                : `Сканирование завершено в ${t}. Сектор стабилен. Радиофон в норме. Активных угроз не обнаружено.`;
-        } else if (text.includes("коорд") || text.includes("где я")) {
-            response = `Ваша позиция: широта ${c.lat.toFixed(6)}, долгота ${c.lng.toFixed(6)}. Спутниковый линк стабилен. Смещение GPS в пределах нормы.`;
-        } else if (text.includes("чисто") || text.includes("всё ок")) {
-            response = `Принято. Центр-9 переходит в режим ожидания. Продолжайте визуальный мониторинг.`;
-        } else if (text.includes("цель") || text.includes("объект")) {
-            response = isTargetLocked 
-                ? `Объект классифицирован как потенциально важный элемент инфраструктуры. Координаты заблокированы в системе наведения.`
-                : `ВНИМАНИЕ: Визуальный захват отсутствует. Центрируйте камеру на подозрительном объекте для анализа.`;
-        } else if (text.includes("кто ты") || text.includes("центр")) {
-            response = `Я — терминал управления "Центр-9". Обеспечиваю тактическую поддержку, триангуляцию и метеоанализ в реальном времени.`;
-        } else if (text.includes("погода")) {
-            const w = document.getElementById('weather-val').innerText.split('|')[0];
-            response = `Метеосводка: ${w.toLowerCase()}. Осадки не препятствуют работе оптики.`;
-        } else if (text.includes("бпла") || text.includes("дрон")) {
-            response = `Мониторинг частот управления БПЛА активен. Помех не обнаружено. Ваша точка выхода на связь защищена.`;
-        } else if (text.includes("оборона") || text.includes("пво")) {
-            response = `Системы обнаружения активны. Ближайшие узлы ПВО работают в штатном режиме. Горизонт чист.`;
-        } else if (text.includes("база") || text.includes("штаб")) {
-            response = `Штаб на связи. Ваши логи передаются по защищенному каналу. Ожидайте новых распоряжений после завершения обхода.`;
-        } else if (text.includes("сектор")) {
-            response = `Сектор ${c.lat.toFixed(2)}N ${c.lng.toFixed(2)}E считается зоной ограниченного доступа. Сохраняйте бдительность.`;
+        if (text.includes("привет") || text.includes("здравствуй") || text.includes("на связи")) {
+            response = getRnd(responses.greetings);
+        } else if (text.includes("статус") || text.includes("обстановка") || text.includes("что там")) {
+            response = isTargetLocked ? getRnd(responses.target_locked) : getRnd(responses.status);
+        } else if (text.includes("коорд") || text.includes("где я") || text.includes("позиция")) {
+            response = getRnd(responses.coords);
+        } else if (text.includes("чисто") || text.includes("всё ок") || text.includes("отбой")) {
+            response = getRnd(responses.clear);
+        } else if (text.includes("цель") || text.includes("объект") || text.includes("захват")) {
+            response = isTargetLocked ? getRnd(responses.target_locked) : `ВНИМАНИЕ: Визуальный захват отсутствует. Центрируйте камеру на объекте.`;
+        } else if (text.includes("кто ты") || text.includes("центр") || text.includes("система")) {
+            response = getRnd(responses.identity);
+        } else if (text.includes("погода") || text.includes("ветер") || text.includes("видимость")) {
+            response = getRnd(responses.weather);
+        } else if (text.includes("дрон") || text.includes("бпла") || text.includes("пво") || text.includes("рэб")) {
+            response = getRnd(responses.military);
         } else {
-            response = `Запрос обработан. Данные по квадрату обновлены. Информации по вашему тексту не найдено в базе данных, уточните запрос.`;
+            response = getRnd(responses.unknown);
         }
 
         setTimeout(() => {
@@ -471,22 +508,17 @@
                 `)
                 .addTo(mapBottom);
             
-            const voiceData = `${title}. ${desc}. Координаты: широта ${lat.toFixed(4)}, долгота ${lng.toFixed(4)}.`;
+            const voiceData = `${title}. ${desc}.`;
             speak(voiceData);
         });
 
-        appendMsg("ВЫ", `Установлен маркер: ${title}`);
-        
-        const coordString = `Координаты: широта ${lat.toFixed(4)}, долгота ${lng.toFixed(4)}.`;
-        const botText = `Объект ${title} внесен в реестр. ${coordString} Жду подтверждения статуса.`;
-        
+        appendMsg("ВЫ", `Маркер: ${title}`);
         setTimeout(() => {
-            appendMsg("ЦЕНТР", botText, true);
-            speak(botText);
+            appendMsg("ЦЕНТР", `Объект "${title}" добавлен в тактическую сеть. Координаты подтверждены.`, true);
+            speak(`Объект ${title} добавлен.`);
         }, 400);
     }
 
-    // Запуск процедур
     updateClock();
     initUserLocation();
 </script>
