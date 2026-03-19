@@ -2,15 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>NEURAL INTERFACE v14.9.5 - TACTICAL SCANNER</title>
+    <title>NEURAL INTERFACE v14.9.8 - TACTICAL SCANNER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        :root { --neon: #32ff7e; --alert: #ff3e3e; --glass: rgba(0, 255, 126, 0.1); --panel-bg: rgba(0, 10, 0, 0.95); }
+        :root { --neon: #32ff7e; --alert: #ff3e3e; --glass: rgba(0, 255, 126, 0.1); --panel-bg: rgba(0, 10, 0, 0.95); --map-bg: #030f06; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: var(--neon); }
         
-        /* Сетка и эффекты */
         .overlay-fx { position: absolute; inset: 0; pointer-events: none; z-index: 150; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.005) 0px, transparent 1px); background-size: 100% 4px; }
         .overlay-fx::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.4) 100%); }
 
@@ -20,17 +19,23 @@
             pointer-events: none;
             z-index: 5;
             background-image: 
-                linear-gradient(to right, rgba(50, 255, 126, 0.05) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(50, 255, 126, 0.05) 1px, transparent 1px);
+                linear-gradient(to right, rgba(50, 255, 126, 0.08) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(50, 255, 126, 0.08) 1px, transparent 1px);
             background-size: 40px 40px;
-            opacity: 0.5;
+            opacity: 0.6;
         }
 
-        /* Карта */
-        .map-wrapper { position: absolute; inset: 0; transition: filter 0.4s; }
+        .map-wrapper { position: absolute; inset: 0; transition: filter 0.4s; background: var(--map-bg); }
         .map-layer { position: absolute; inset: 0; }
+        
+        #map-bottom { 
+            z-index: 1; 
+            filter: brightness(1.2) contrast(1.1); 
+            transition: opacity 0.5s ease-in-out, filter 0.5s ease; 
+            background: radial-gradient(circle, #081a0d 0%, #000 100%);
+        }
+
         #map-top { z-index: 2; -webkit-mask-image: radial-gradient(circle, black 120px, transparent 200px); mask-image: radial-gradient(circle, black 120px, transparent 200px); pointer-events: none; opacity: 1; transition: opacity 0.3s; }
-        #map-bottom { z-index: 1; filter: brightness(0.25) grayscale(1); transition: opacity 0.5s ease-in-out, filter 0.5s ease; }
         
         .glitch-flash { animation: flash-anim 0.4s ease-out forwards; }
         @keyframes flash-anim {
@@ -39,7 +44,6 @@
         }
         #transition-overlay { position: absolute; inset: 0; background: var(--neon); z-index: 100; pointer-events: none; opacity: 0; }
 
-        /* HUD */
         .hud { position: absolute; inset: 0; z-index: 200; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
         
         .top-header-panel { 
@@ -47,9 +51,9 @@
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            background: rgba(0, 0, 0, 0.5); 
+            background: rgba(0, 5, 0, 0.7); 
             backdrop-filter: blur(10px); 
-            border-bottom: 1px solid var(--glass); 
+            border-bottom: 1px solid var(--neon); 
             padding: 10px 20px;
             box-sizing: border-box;
             pointer-events: auto;
@@ -60,7 +64,7 @@
 
         .weather-ticker {
             width: 100%;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,10,0,0.8);
             overflow: hidden;
             white-space: nowrap;
             padding: 8px 0;
@@ -68,7 +72,8 @@
             letter-spacing: 1px;
             pointer-events: auto;
             border-top: 1px solid var(--glass);
-            border-bottom: 1px solid var(--glass);
+            /* Контур удален */
+            border-bottom: none; 
             position: relative;
             z-index: 210;
         }
@@ -88,29 +93,27 @@
         @keyframes pulse-dot { 0% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.7; } }
         .stat-active { color: var(--neon) !important; text-transform: uppercase; }
 
-        .minimap-container { width: 200px; height: 80px; background: #000; position: relative; overflow: hidden; border: 1px solid rgba(50, 255, 126, 0.2); }
-        #minimap { width: 100%; height: 100%; filter: saturate(0.5) brightness(0.8); }
+        .minimap-container { width: 200px; height: 80px; background: #000; position: relative; overflow: hidden; border: 1px solid var(--neon); }
+        #minimap { width: 100%; height: 100%; filter: saturate(0.5) brightness(0.8) hue-rotate(80deg); }
         
         .user-dot-container { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-        .user-dir { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid var(--neon); filter: drop-shadow(0 0 5px var(--neon)); }
+        .user-dir { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid var(--neon); filter: drop-shadow(0 0 8px var(--neon)); }
 
-        .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border: 1px solid rgba(50, 255, 126, 0.1); border-radius: 50%; opacity: 1; transition: 0.3s; }
+        .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border: 1px solid rgba(50, 255, 126, 0.2); border-radius: 50%; opacity: 1; transition: 0.3s; }
         .target-data { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; letter-spacing: 3px; font-weight: bold; text-align: center; pointer-events: none; }
         .target-data.locked { color: var(--alert); text-shadow: 0 0 10px var(--alert); animation: blink 0.2s infinite alternate; }
         @keyframes blink { from { opacity: 1; } to { opacity: 0.5; } }
         .searching-anim { animation: pulse-text 1.5s infinite; }
         @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Контроллеры */
-        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px); border: 1px solid var(--glass); border-radius: 2px; pointer-events: auto; z-index: 300; }
+        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 10, 0, 0.8); backdrop-filter: blur(10px); /* Контур удален */ border: none; border-radius: 2px; pointer-events: auto; z-index: 300; }
         .icon-btn { background: none; border: none; color: var(--neon); cursor: pointer; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; transition: 0.2s; opacity: 0.6; }
         .icon-btn:hover, .icon-btn.active { opacity: 1; filter: drop-shadow(0 0 8px var(--neon)); }
         .icon-btn svg { width: 26px; height: 26px; fill: currentColor; }
 
-        /* Чат */
         #chat-panel { position: absolute; right: -320px; top: 0; bottom: 0; width: 300px; background: var(--panel-bg); backdrop-filter: blur(20px); border-left: 1px solid var(--neon); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 400; pointer-events: auto; display: flex; flex-direction: column; }
         #chat-panel.open { right: 0; }
-        .chat-header { padding: 25px 15px 10px; font-size: 10px; border-bottom: 1px solid rgba(50, 255, 126, 0.1); display: flex; justify-content: space-between; letter-spacing: 1px; }
+        .chat-header { padding: 25px 15px 10px; font-size: 10px; border-bottom: 1px solid var(--neon); display: flex; justify-content: space-between; letter-spacing: 1px; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; font-size: 11px; display: flex; flex-direction: column; gap: 15px; }
         .msg { border-left: 1px solid var(--neon); padding-left: 10px; animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -121,10 +124,9 @@
         .qr-btn { background: transparent; border: 1px solid var(--neon); color: var(--neon); font-size: 9px; padding: 5px 10px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         .qr-btn:hover { background: var(--neon); color: #000; }
 
-        .chat-input-area { padding: 15px; border-top: 1px solid rgba(50, 255, 126, 0.1); display: flex; gap: 8px; background: #000; }
+        .chat-input-area { padding: 15px; border-top: 1px solid var(--neon); display: flex; gap: 8px; background: #000; }
         .chat-input-area input { background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 12px; flex: 1; font-family: monospace; font-size: 12px; outline: none; }
 
-        /* Маркеры */
         .custom-poi { width: 14px; height: 14px; background: var(--neon); border: 2px solid #000; transform: rotate(45deg); box-shadow: 0 0 15px var(--neon); border-radius: 2px; cursor: pointer; pointer-events: auto; transition: transform 0.2s; }
         .custom-poi:hover { transform: rotate(45deg) scale(1.3); }
         
@@ -133,7 +135,7 @@
         .maplibregl-popup-tip { border-top-color: var(--neon) !important; }
 
         .marker-form { background: #000; border: 1px solid var(--neon); padding: 15px; color: var(--neon); min-width: 180px; box-shadow: 0 0 20px rgba(0,0,0,0.8); pointer-events: auto; }
-        .marker-form input, .marker-form textarea { background: #111; border: 1px solid #333; color: #fff; width: 100%; margin: 8px 0; padding: 8px; font-size: 11px; outline: none; box-sizing: border-box; font-family: monospace; }
+        .marker-form input, .marker-form textarea { background: #081a0d; border: 1px solid var(--neon); color: #fff; width: 100%; margin: 8px 0; padding: 8px; font-size: 11px; outline: none; box-sizing: border-box; font-family: monospace; }
         .marker-form textarea { height: 50px; resize: none; }
         .marker-form button { background: var(--neon); border: none; color: #000; width: 100%; padding: 10px; cursor: pointer; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
 
@@ -157,10 +159,10 @@
     </div>
     
     <div class="quick-replies">
-        <button class="qr-btn" onclick="quickSend('Статус сектора')">Статус</button>
-        <button class="qr-btn" onclick="quickSend('Цель в прицеле')">Цель!</button>
+        <button class="qr-btn" onclick="quickSend('Статус')">Статус</button>
+        <button class="qr-btn" onclick="quickSend('Цель')">Цель!</button>
         <button class="qr-btn" onclick="quickSend('Чисто')">Чисто</button>
-        <button class="qr-btn" onclick="quickSend('Запрос координат')">Коорд</button>
+        <button class="qr-btn" onclick="quickSend('Координаты')">Коорд</button>
     </div>
 
     <div class="chat-input-area">
@@ -230,22 +232,52 @@
     let isTargetLocked = false;
     let isAddingPoi = false;
 
+    // --- БОТ И API ---
+    const state = { statusIdx: 0, targetIdx: 0, clearIdx: 0, coordIdx: 0 };
+
+    async function getDuckDuckGoAnswer(query) {
+        try {
+            const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
+            const data = await response.json();
+            return data.AbstractText || null;
+        } catch (e) { return null; }
+    }
+
+    async function botResponse(userText) {
+        const text = userText.toLowerCase().trim();
+        const c = mapBottom.getCenter();
+        const replies = {
+            status: [`Сканирование сектора ${c.lat.toFixed(2)}: Активных угроз не обнаружено.`, `Внимание: Зафиксированы помехи в нижнем диапазоне.`, `Все системы функционируют штатно.`, `Обнаружена аномалия сигнатуры.`],
+            target: [`Цель подтверждена. Дистанция: ${Math.floor(Math.random()*500 + 100)}м.`, `Объект в захвате. Ожидаю приказа.`, `Сигнатура опознана. Снимаю приоритет.`, `Потеря визуального контакта.`],
+            clear: [`Принято. Перехожу в пассивный режим.`, `Рапорт получен. Логи зашифрованы.`, `Сектор признан безопасным.`, `Подтверждаю. Чисто.`],
+            coords: [`Текущий квадрат: ${c.lat.toFixed(5)}N, ${c.lng.toFixed(5)}E.`, `Высота: ${Math.floor(Math.random()*50 + 150)}м.`, `Точность: 0.8м.`, `Координаты синхронизированы.`]
+        };
+
+        let responseText = "";
+        if (text.includes("статус")) { responseText = replies.status[state.statusIdx++ % replies.status.length]; } 
+        else if (text.includes("цель")) { responseText = replies.target[state.targetIdx++ % replies.target.length]; } 
+        else if (text.includes("чисто")) { responseText = replies.clear[state.clearIdx++ % replies.clear.length]; } 
+        else if (text.includes("коорд")) { responseText = replies.coords[state.coordIdx++ % replies.coords.length]; } 
+        else {
+            const ext = await getDuckDuckGoAnswer(text);
+            responseText = ext ? `[ДАННЫЕ]: ${ext.substring(0, 180)}...` : `Запрос "${text}" принят. Анализ не дал результата.`;
+        }
+
+        setTimeout(() => { appendMsg("ЦЕНТР", responseText, true); speak(responseText); }, 400);
+    }
+
     // --- ПОГОДА И ГЕО ---
     async function fetchWeatherData(lat, lng) {
         try {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,surface_pressure&timezone=auto`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
             const response = await fetch(url);
             const data = await response.json();
             const curr = data.current;
-            const weatherDesc = { 0: "ЯСНО", 1: "ПРЕИМУЩЕСТВЕННО ЯСНО", 2: "ПЕРЕМЕННАЯ ОБЛАЧНОСТЬ", 3: "ПАСМУРНО", 45: "ТУМАН", 61: "ЛЕГКИЙ ДОЖДЬ", 71: "СНЕГ", 95: "ГРОЗА" };
+            const weatherDesc = { 0: "ЯСНО", 3: "ПАСМУРНО", 45: "ТУМАН", 61: "ДОЖДЬ", 95: "ГРОЗА" };
             const status = weatherDesc[curr.weather_code] || "СТАБИЛЬНО";
-            const weatherText = `РЕГИОН: ${lat.toFixed(4)}N ${lng.toFixed(4)}E | СТАТУС: ${status} | ТЕМПЕРАТУРА: ${curr.temperature_2m}°C | ВЕТЕР: ${curr.wind_speed_10m} КМ/Ч | ВЛАЖНОСТЬ: ${curr.relative_humidity_2m}% | ДАВЛЕНИЕ: ${curr.surface_pressure} hPa | ВНИМАНИЕ: ВСЕ ДАННЫЕ ПЕРЕДАЮТСЯ ПО ЗАШИФРОВАННОМУ КАНАЛУ | ПОДТВЕРЖДЕНА СИНХРОНИЗАЦИЯ С ЦЕНТРОМ-9 | `;
-            
-            const tickerEl = document.getElementById('weather-val');
-            tickerEl.innerText = weatherText + weatherText + weatherText;
-        } catch (e) {
-            document.getElementById('weather-val').innerText = "ОШИБКА МЕТЕО-СКАНИРОВАНИЯ... ОЖИДАНИЕ ПЕРЕПОДКЛЮЧЕНИЯ... ";
-        }
+            const weatherText = `РЕГИОН: ${lat.toFixed(4)}N ${lng.toFixed(4)}E | СТАТУС: ${status} | ТЕМП: ${curr.temperature_2m}°C | ВЕТЕР: ${curr.wind_speed_10m} КМ/Ч | ВСЕ ДАННЫЕ ЗАШИФРОВАНЫ | СИНХРОНИЗАЦИЯ С ЦЕНТРОМ-9 | `;
+            document.getElementById('weather-val').innerText = weatherText.repeat(3);
+        } catch (e) { document.getElementById('weather-val').innerText = "ОШИБКА МЕТЕО-СКАНИРОВАНИЯ... "; }
     }
 
     function initUserLocation() {
@@ -253,19 +285,13 @@
             navigator.geolocation.getCurrentPosition((pos) => {
                 const { latitude: lat, longitude: lng } = pos.coords;
                 currentCenter = [lng, lat];
-                mapBottom.jumpTo({ center: currentCenter });
-                mapTop.jumpTo({ center: currentCenter });
-                miniMap.jumpTo({ center: currentCenter });
+                [mapBottom, mapTop, miniMap].forEach(m => m.jumpTo({ center: currentCenter }));
                 dirMarker.setLngLat(currentCenter);
                 document.getElementById('loc-name').innerText = `${lat.toFixed(4)}N ${lng.toFixed(4)}E`;
                 fetchWeatherData(lat, lng);
-                appendMsg("СИСТЕМА", `Геопозиция синхронизирована: Квадрат ${lat.toFixed(2)}N ${lng.toFixed(2)}E`, true);
-            }, (err) => {
-                fetchWeatherData(currentCenter[1], currentCenter[0]);
-            }, { enableHighAccuracy: true });
-        } else {
-            fetchWeatherData(currentCenter[1], currentCenter[0]);
-        }
+                appendMsg("СИСТЕМА", `Геопозиция синхронизирована: Квадрат ${lat.toFixed(2)}N`, true);
+            }, () => fetchWeatherData(currentCenter[1], currentCenter[0]), { enableHighAccuracy: true });
+        } else { fetchWeatherData(currentCenter[1], currentCenter[0]); }
     }
 
     function updateClock() {
@@ -303,34 +329,15 @@
         msgDiv.className = `msg ${isBot ? 'bot' : ''}`;
         msgDiv.innerHTML = `<b>${sender} [${new Date().toLocaleTimeString()}]</b> <span class="txt"></span>`;
         container.appendChild(msgDiv);
-        let i = 0;
-        const span = msgDiv.querySelector('.txt');
-        function typing() {
-            if (i < text.length) { span.innerHTML += text.charAt(i++); setTimeout(typing, 15); container.scrollTop = container.scrollHeight; }
-        }
+        let i = 0; const span = msgDiv.querySelector('.txt');
+        function typing() { if (i < text.length) { span.innerHTML += text.charAt(i++); setTimeout(typing, 15); container.scrollTop = container.scrollHeight; } }
         typing();
-    }
-
-    function botResponse(userText) {
-        const text = userText.toLowerCase().trim();
-        const c = mapBottom.getCenter();
-        const responses = {
-            greetings: [`Связь установлена. Оперативник, доложите обстановку в квадрате ${c.lat.toFixed(2)}N.`, `Канал стабилен. Жду данных визуальной разведки.`, `Терминал Центр-9 активен.`],
-            status: [`Сканирование завершено. Сектор стабилен. Активных угроз не обнаружено.`, `Проверка систем... Оптика в норме, спутниковый линк 100%.`],
-            coords: [`Ваша позиция: широта ${c.lat.toFixed(6)}, долгота ${c.lng.toFixed(6)}.`, `Координаты подтверждены спутником.`],
-            clear: [`Принято. Центр-9 переходит в режим ожидания.`, `Рапорт принят. Логи очищены.`],
-            unknown: [`Запрос обработан. Вношу в журнал наблюдений.`, `Информация принята. Требуется ли детальный анализ?`]
-        };
-        const getRnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
-        let response = text.includes("статус") ? getRnd(responses.status) : (text.includes("коорд") ? getRnd(responses.coords) : (text.includes("чисто") ? getRnd(responses.clear) : getRnd(responses.unknown)));
-        setTimeout(() => { appendMsg("ЦЕНТР", response, true); speak(response); }, 400);
     }
 
     function sendMsg() {
         const input = document.getElementById('chat-input');
         if (!input.value.trim()) return;
-        appendMsg("ВЫ", input.value); botResponse(input.value);
-        input.value = '';
+        const val = input.value; appendMsg("ВЫ", val); botResponse(val); input.value = '';
     }
 
     function quickSend(text) { appendMsg("ВЫ", text); botResponse(text); }
@@ -367,12 +374,17 @@
             if (!map.getSource(src)) map.addSource(src, { type: 'vector', url: 'https://tiles.basemaps.cartocdn.com/vector/carto.streets.v1/tiles.json' });
             map.addLayer({
                 'id': id, 'source': src, 'source-layer': 'building', 'type': 'fill-extrusion',
-                'paint': { 'fill-extrusion-color': isTop ? '#444' : '#0a0a0a', 'fill-extrusion-height': ['get', 'render_height'], 'fill-extrusion-opacity': isTop ? 0.9 : 0.6 }
+                'paint': { 
+                    'fill-extrusion-color': isTop ? '#32ff7e' : '#444', 
+                    'fill-extrusion-height': ['get', 'render_height'], 
+                    'fill-extrusion-opacity': isTop ? 0.3 : 0.25,
+                    'fill-extrusion-base': ['get', 'render_min_height']
+                }
             });
             if (isTop) {
                 map.addLayer({
                     'id': 'building-highlight', 'source': src, 'source-layer': 'building', 'type': 'fill-extrusion',
-                    'paint': { 'fill-extrusion-color': '#32ff7e', 'fill-extrusion-height': ['get', 'render_height'], 'fill-extrusion-opacity': 0.8 },
+                    'paint': { 'fill-extrusion-color': '#32ff7e', 'fill-extrusion-height': ['get', 'render_height'], 'fill-extrusion-opacity': 0.9 },
                     'filter': ['==', ['id'], '']
                 });
             }
@@ -400,7 +412,6 @@
         document.getElementById('main-crosshair').style.opacity = state;
     }
 
-    // --- РАБОТА С МЕТКАМИ ---
     mapBottom.on('click', (e) => {
         if (!isAddingPoi) return;
         const popup = new maplibregl.Popup({ closeButton: false, offset: [0, -10] })
@@ -411,13 +422,9 @@
                     <textarea id="poi-desc" placeholder="ДАННЫЕ..."></textarea>
                     <button id="save-poi-btn">МАРКИРОВАТЬ</button>
                 </div>
-            `)
-            .addTo(mapBottom);
+            `).addTo(mapBottom);
 
-        document.getElementById('save-poi-btn').onclick = () => {
-            savePoi(e.lngLat.lng, e.lngLat.lat);
-            popup.remove();
-        };
+        document.getElementById('save-poi-btn').onclick = () => { savePoi(e.lngLat.lng, e.lngLat.lat); popup.remove(); };
         enablePoiMode();
     });
 
@@ -425,30 +432,17 @@
         const title = document.getElementById('poi-title').value || "ОБЪЕКТ";
         const desc = document.getElementById('poi-desc').value || "Данные отсутствуют.";
         const el = document.createElement('div'); el.className = 'custom-poi';
-        
         const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
-        
         el.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            playBeep();
+            ev.stopPropagation(); playBeep();
             new maplibregl.Popup({ closeButton: false, offset: [0, -15] })
                 .setLngLat([lng, lat])
-                .setHTML(`
-                    <div class="poi-info-panel">
-                        <b>${title}</b>
-                        ${desc}
-                        <small>COORDS: ${lat.toFixed(5)}, ${lng.toFixed(5)}</small>
-                    </div>
-                `)
+                .setHTML(`<div class="poi-info-panel"><b>${title}</b>${desc}<small>COORDS: ${lat.toFixed(5)}, ${lng.toFixed(5)}</small></div>`)
                 .addTo(mapBottom);
             speak(`${title}. ${desc}.`);
         });
-
         appendMsg("ВЫ", `Маркер: ${title}`);
-        setTimeout(() => {
-            appendMsg("ЦЕНТР", `Объект "${title}" добавлен в тактическую сеть.`, true);
-            speak(`Объект ${title} добавлен.`);
-        }, 400);
+        setTimeout(() => { appendMsg("ЦЕНТР", `Объект "${title}" добавлен.`, true); speak(`Объект добавлен.`); }, 400);
     }
 
     updateClock();
