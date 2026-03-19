@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>NEURAL INTERFACE v14.9.8 - TACTICAL SCANNER</title>
+    <title>myMAP</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -105,10 +105,16 @@
         .searching-anim { animation: pulse-text 1.5s infinite; }
         @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 10, 0, 0.8); backdrop-filter: blur(10px); border: none; border-radius: 2px; pointer-events: auto; z-index: 300; }
+        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 10, 0, 0.8); backdrop-filter: blur(10px); border: none; border-radius: 2px; pointer-events: auto; z-index: 300; transition: opacity 0.3s, transform 0.3s; border: 1px solid var(--neon); }
+        .controls.hidden { opacity: 0; pointer-events: none; transform: translate(-50%, 20px); }
         .icon-btn { background: none; border: none; color: var(--neon); cursor: pointer; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; transition: 0.2s; opacity: 0.6; }
         .icon-btn:hover, .icon-btn.active { opacity: 1; filter: drop-shadow(0 0 8px var(--neon)); }
         .icon-btn svg { width: 26px; height: 26px; fill: currentColor; }
+
+        #poi-edit-controls { border-color: var(--alert); background: rgba(20, 0, 0, 0.9); }
+        .edit-btn-alert { color: var(--alert); opacity: 0.7; }
+        .edit-btn-alert:hover { opacity: 1; filter: drop-shadow(0 0 8px var(--alert)); }
+        .edit-btn-exit { color: #fff; }
 
         #chat-panel { position: absolute; right: -320px; top: 0; bottom: 0; width: 300px; background: var(--panel-bg); backdrop-filter: blur(20px); border-left: 1px solid var(--neon); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 400; pointer-events: auto; display: flex; flex-direction: column; }
         #chat-panel.open { right: 0; }
@@ -126,8 +132,9 @@
         .chat-input-area { padding: 15px; border-top: 1px solid var(--neon); display: flex; gap: 8px; background: #000; }
         .chat-input-area input { background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 12px; flex: 1; font-family: monospace; font-size: 12px; outline: none; }
 
-        .custom-poi { width: 14px; height: 14px; background: var(--neon); border: 2px solid #000; transform: rotate(45deg); box-shadow: 0 0 15px var(--neon); border-radius: 2px; cursor: pointer; pointer-events: auto; transition: transform 0.2s; }
+        .custom-poi { width: 14px; height: 14px; background: var(--neon); border: 2px solid #000; transform: rotate(45deg); box-shadow: 0 0 15px var(--neon); border-radius: 2px; cursor: pointer; pointer-events: auto; transition: 0.2s; }
         .custom-poi:hover { transform: rotate(45deg) scale(1.3); }
+        .custom-poi.selected { background: var(--alert); box-shadow: 0 0 20px var(--alert); transform: rotate(45deg) scale(1.4); }
         
         .maplibregl-popup { z-index: 500; }
         .maplibregl-popup-content { background: transparent; padding: 0; border: none; box-shadow: none; }
@@ -138,7 +145,7 @@
         .marker-form textarea { height: 50px; resize: none; }
         .marker-form button { background: var(--neon); border: none; color: #000; width: 100%; padding: 10px; cursor: pointer; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
 
-        .poi-info-panel { background: #000; border: 1px solid var(--neon); padding: 10px; color: #fff; font-size: 10px; min-width: 150px; text-transform: uppercase; box-shadow: 0 0 15px rgba(0,0,0,0.9); }
+        .poi-info-panel { background: #000; border: 1px solid var(--neon); padding: 10px; color: #fff; font-size: 10px; min-width: 150px; text-transform: uppercase; box-shadow: 0 0 15px rgba(0,0,0,0.9); border-left: 3px solid var(--neon); }
         .poi-info-panel b { color: var(--neon); display: block; margin-bottom: 5px; border-bottom: 1px solid var(--glass); padding-bottom: 3px; font-size: 11px; letter-spacing: 1px; }
         .poi-info-panel small { opacity: 0.5; font-size: 7px; margin-top: 8px; display: block; color: var(--neon); }
     </style>
@@ -199,11 +206,23 @@
         <div class="target-data" id="target-info">SCANNING...</div>
     </div>
 
-    <div class="controls">
+    <div class="controls" id="main-controls">
         <button class="icon-btn" onclick="menuAction('Режим визуализации', toggleVision)" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5-11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
         <button class="icon-btn" onclick="menuAction('Фильтр сканера', toggleScannerMask)" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.66 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
         <button class="icon-btn" id="poi-btn" onclick="menuAction('Маркировка сектора', enablePoiMode)" title="Mark POI"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
         <button class="icon-btn" id="chat-btn" onclick="menuAction('Канал связи', toggleChat)" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
+    </div>
+
+    <div class="controls hidden" id="poi-edit-controls">
+        <button class="icon-btn edit-btn-alert" onclick="menuAction('Изменение данных', handlePoiEdit)" title="Edit POI">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+        <button class="icon-btn edit-btn-alert" onclick="menuAction('Удаление объекта', handlePoiDelete)" title="Delete POI">
+            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+        <button class="icon-btn edit-btn-exit" onclick="menuAction('Выход из режима', exitPoiSelection)" title="Cancel">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
     </div>
 </div>
 
@@ -230,17 +249,11 @@
 
     let isTargetLocked = false;
     let isAddingPoi = false;
+    let selectedPoiId = null;
     let savedPois = [];
+    let markersMap = {}; 
 
     const state = { statusIdx: 0, targetIdx: 0, clearIdx: 0, coordIdx: 0 };
-
-    async function getDuckDuckGoAnswer(query) {
-        try {
-            const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
-            const data = await response.json();
-            return data.AbstractText || null;
-        } catch (e) { return null; }
-    }
 
     async function botResponse(userText) {
         const text = userText.toLowerCase().trim();
@@ -257,10 +270,7 @@
         else if (text.includes("цель")) { responseText = replies.target[state.targetIdx++ % replies.target.length]; } 
         else if (text.includes("чисто")) { responseText = replies.clear[state.clearIdx++ % replies.clear.length]; } 
         else if (text.includes("коорд")) { responseText = replies.coords[state.coordIdx++ % replies.coords.length]; } 
-        else {
-            const ext = await getDuckDuckGoAnswer(text);
-            responseText = ext ? `[ДАННЫЕ]: ${ext.substring(0, 180)}...` : `Запрос "${text}" принят. Анализ не дал результата.`;
-        }
+        else { responseText = `Запрос "${text}" принят. Анализ завершен.`; }
 
         setTimeout(() => { appendMsg("ЦЕНТР", responseText, true); speak(responseText); }, 400);
     }
@@ -300,12 +310,12 @@
     }
     setInterval(updateClock, 1000);
 
-    function playBeep() {
+    function playBeep(isAlert = false) {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const g = ctx.createGain();
-            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.setValueAtTime(isAlert ? 400 : 800, ctx.currentTime);
             g.gain.setValueAtTime(0.04, ctx.currentTime);
             g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
             osc.connect(g); g.connect(ctx.destination);
@@ -410,6 +420,11 @@
     }
 
     mapBottom.on('click', (e) => {
+        if (selectedPoiId && !e.originalEvent.target.classList.contains('custom-poi')) {
+            exitPoiSelection();
+            return;
+        }
+
         if (!isAddingPoi) return;
         const popup = new maplibregl.Popup({ closeButton: false, offset: [0, -10] })
             .setLngLat(e.lngLat)
@@ -421,40 +436,117 @@
                 </div>
             `).addTo(mapBottom);
 
-        document.getElementById('save-poi-btn').onclick = () => { savePoi(e.lngLat.lng, e.lngLat.lat); popup.remove(); };
+        document.getElementById('save-poi-btn').onclick = () => { 
+            const t = document.getElementById('poi-title').value;
+            const d = document.getElementById('poi-desc').value;
+            popup.remove();
+            savePoi(e.lngLat.lng, e.lngLat.lat, t, d); 
+        };
         enablePoiMode();
     });
 
-    function savePoi(lng, lat, title, desc, isInitialLoad = false) {
-        const finalTitle = title || document.getElementById('poi-title').value || "ОБЪЕКТ";
-        const finalDesc = desc || document.getElementById('poi-desc').value || "Данные отсутствуют.";
+    function savePoi(lng, lat, title, desc, isInitialLoad = false, id = null) {
+        const poiId = id || Date.now();
+        const finalTitle = title || "ОБЪЕКТ-" + Math.floor(Math.random()*999);
+        const finalDesc = desc || "Сектор просканирован. Угроз не выявлено.";
         
-        const el = document.createElement('div'); el.className = 'custom-poi';
-        new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
+        const el = document.createElement('div'); 
+        el.className = 'custom-poi';
+        el.dataset.id = poiId;
         
+        const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
+        markersMap[poiId] = marker;
+
         el.addEventListener('click', (ev) => {
-            ev.stopPropagation(); playBeep();
-            new maplibregl.Popup({ closeButton: false, offset: [0, -15] })
-                .setLngLat([lng, lat])
-                .setHTML(`<div class="poi-info-panel"><b>${finalTitle}</b>${finalDesc}<small>COORDS: ${lat.toFixed(5)}, ${lng.toFixed(5)}</small></div>`)
-                .addTo(mapBottom);
-            speak(`${finalTitle}. ${finalDesc}.`);
+            ev.stopPropagation();
+            selectPoi(poiId, [lng, lat], finalTitle, finalDesc);
         });
 
         if (!isInitialLoad) {
-            savedPois.push({ lng, lat, title: finalTitle, desc: finalDesc });
-            localStorage.setItem('neural_interface_pois', JSON.stringify(savedPois));
-            appendMsg("ВЫ", `Маркер: ${finalTitle}`);
-            setTimeout(() => { appendMsg("ЦЕНТР", `Объект "${finalTitle}" добавлен в базу.`, true); speak(`Объект добавлен.`); }, 400);
+            savedPois.push({ id: poiId, lng, lat, title: finalTitle, desc: finalDesc });
+            syncStorage();
+            appendMsg("СИСТЕМА", `Маркер установлен: ${finalTitle} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`, true);
+            speak(`Объект ${finalTitle} зафиксирован в базе данных.`);
+            selectPoi(poiId, [lng, lat], finalTitle, finalDesc); 
         }
     }
+
+    function selectPoi(id, coords, title, desc) {
+        playBeep();
+        selectedPoiId = id;
+        
+        document.querySelectorAll('.custom-poi').forEach(m => m.classList.remove('selected'));
+        const targetMarker = document.querySelector(`.custom-poi[data-id="${id}"]`);
+        if(targetMarker) targetMarker.classList.add('selected');
+
+        document.getElementById('main-controls').classList.add('hidden');
+        document.getElementById('poi-edit-controls').classList.remove('hidden');
+
+        const oldPopups = document.getElementsByClassName('maplibregl-popup');
+        while(oldPopups[0]) oldPopups[0].parentNode.removeChild(oldPopups[0]);
+
+        new maplibregl.Popup({ closeButton: false, offset: [0, -15] })
+            .setLngLat(coords)
+            .setHTML(`<div class="poi-info-panel"><b>${title}</b>${desc}<small>ID: ${id} | ${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}</small></div>`)
+            .addTo(mapBottom);
+        
+        speak(`${title}. Данные: ${desc}`);
+    }
+
+    function exitPoiSelection() {
+        selectedPoiId = null;
+        document.querySelectorAll('.custom-poi').forEach(m => m.classList.remove('selected'));
+        document.getElementById('main-controls').classList.remove('hidden');
+        document.getElementById('poi-edit-controls').classList.add('hidden');
+        
+        const popups = document.getElementsByClassName('maplibregl-popup');
+        while(popups[0]) popups[0].parentNode.removeChild(popups[0]);
+    }
+
+    function handlePoiDelete() {
+        if (!selectedPoiId) return;
+        playBeep(true);
+        const poi = savedPois.find(p => p.id === selectedPoiId);
+        const title = poi ? poi.title : "объекта";
+        
+        if (markersMap[selectedPoiId]) {
+            markersMap[selectedPoiId].remove();
+            delete markersMap[selectedPoiId];
+        }
+        savedPois = savedPois.filter(p => p.id !== selectedPoiId);
+        syncStorage();
+        
+        appendMsg("СИСТЕМА", `Данные ${title} удалены из реестра`, true);
+        speak(`Объект ${title} стерт из памяти.`);
+        exitPoiSelection();
+    }
+
+    function handlePoiEdit() {
+        const poi = savedPois.find(p => p.id === selectedPoiId);
+        if (!poi) return;
+
+        const newTitle = prompt("ИЗМЕНИТЬ ИМЯ:", poi.title);
+        const newDesc = prompt("ИЗМЕНИТЬ ДАННЫЕ:", poi.desc);
+
+        if (newTitle !== null) {
+            poi.title = newTitle;
+            poi.desc = newDesc || poi.desc;
+            syncStorage();
+            
+            appendMsg("СИСТЕМА", `Объект ${poi.id} переименован в ${newTitle}`, true);
+            speak(`Информация об объекте ${newTitle} обновлена.`);
+            exitPoiSelection();
+            selectPoi(poi.id, [poi.lng, poi.lat], poi.title, poi.desc);
+        }
+    }
+
+    function syncStorage() { localStorage.setItem('neural_interface_pois', JSON.stringify(savedPois)); }
 
     function loadPois() {
         const raw = localStorage.getItem('neural_interface_pois');
         if (raw) {
             savedPois = JSON.parse(raw);
-            savedPois.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true));
-            console.log(`[SYSTEM]: Восстановлено меток: ${savedPois.length}`);
+            savedPois.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true, p.id));
         }
     }
 
