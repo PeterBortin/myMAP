@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>myMAP - Tactical Scanner</title>
+    <title>NEURAL INTERFACE v15.0.5 - TACTICAL SCANNER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -238,7 +238,7 @@
         </div>
         <div class="search-block">
             <div class="search-input-wrapper">
-                <input type="text" id="map-search" placeholder="ПОИСК ОБЪЕКТА / КООРДИНАТ..." autocomplete="off" onkeydown="if(event.key==='Enter') performSearch()" oninput="handleSearchInput(this.value)">
+                <input type="text" id="map-search" placeholder="ПОИСК ОБЪЕКТА (UKRAINE)..." autocomplete="off" onkeydown="if(event.key==='Enter') performSearch()" oninput="handleSearchInput(this.value)">
                 <button class="search-btn" onclick="performSearch()" title="Найти">
                     <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 </button>
@@ -288,9 +288,9 @@
         bank: `<svg viewBox="0 0 24 24"><path d="M11.5 1L2 6v2h19V6L11.5 1zM6.25 10v7h3v-7h-3zm6.25 0v7h3v-7h-3zm6.25 0v7h3v-7h-3zM2 19v2h19v-2H2z"/></svg>`
     };
 
-    let currentCenter = [30.5234, 50.4501];
-    let currentCity = "Украина";
-    let currentWeather = { temp: "--", status: "--", wind: "--" };
+    let currentCenter = [30.5234, 50.4501]; // Kyiv
+    let currentCity = "КИЇВ";
+    let currentWeather = { temp: "--", status: "СИНХРОНИЗАЦИЯ", wind: "--" };
     
     const config = { center: currentCenter, zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
 
@@ -310,89 +310,113 @@
     let markersMap = {}; 
     let botMarkers = [];
 
-    let touchStartX = 0;
-    const chatPanel = document.getElementById('chat-panel');
-    chatPanel.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
-    chatPanel.addEventListener('touchend', e => {
-        if (e.changedTouches[0].screenX - touchStartX > 100) {
-            if (chatPanel.classList.contains('open')) toggleChat();
+    async function fetchWeatherData(lat, lng) {
+        try {
+            const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=uk`;
+            const geoRes = await fetch(geoUrl);
+            const geoData = await geoRes.json();
+            currentCity = geoData.address.city || geoData.address.town || geoData.address.village || "СЕКТОР-UA";
+
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
+            const response = await fetch(url);
+            const data = await response.json();
+            const curr = data.current;
+            const weatherDesc = { 0: "ЯСНО", 1: "ПРЕИМ. ЯСНО", 2: "ОБЛАЧНО", 3: "ПАСМУРНО", 45: "ТУМАН", 61: "ДОЖДЬ", 71: "СНЕГ", 95: "ГРОЗА" };
+            
+            currentWeather = { 
+                temp: Math.round(curr.temperature_2m), 
+                status: weatherDesc[curr.weather_code] || "СТАБИЛЬНО", 
+                wind: Math.round(curr.wind_speed_10m) 
+            };
+
+            document.getElementById('weather-val').innerHTML = `
+                <div class="ticker-line">РЕГИОН: ${currentCity.toUpperCase()} | UA-СЕКТОР: ${lat.toFixed(3)}N ${lng.toFixed(3)}E</div>
+                <div class="ticker-line">МЕТЕО: ${currentWeather.status} | ТЕМП: ${currentWeather.temp}°C | ВЕТЕР: ${currentWeather.wind} КМ/Ч</div>
+                <div class="ticker-line">СИСТЕМА: UA-NET АКТИВНА | КАНАЛ: ЦЕНТР-9 ОНЛАЙН</div>
+                <div class="ticker-line">СТАТУС: ЛОКАЛЬНОЕ СКАНЕРОВАНИЕ | UA-BOUNDARIES ONLY</div>
+            `;
+        } catch (e) { 
+            console.error("Meteo Error:", e);
         }
-    });
+    }
+
+    function initUserLocation() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const { latitude: lat, longitude: lng } = pos.coords;
+                // Проверка на вхождение в границы Украины (примерные координаты)
+                if(lat > 44 && lat < 53 && lng > 22 && lng < 41) {
+                   currentCenter = [lng, lat];
+                }
+                [mapBottom, mapTop, miniMap].forEach(m => m.jumpTo({ center: currentCenter }));
+                dirMarker.setLngLat(currentCenter);
+                fetchWeatherData(currentCenter[1], currentCenter[0]);
+            }, (err) => {
+                fetchWeatherData(currentCenter[1], currentCenter[0]);
+            }, { enableHighAccuracy: true });
+        } else {
+            fetchWeatherData(currentCenter[1], currentCenter[0]);
+        }
+    }
 
     async function botResponse(userText) {
         const text = userText.toLowerCase().trim();
         const c = mapBottom.getCenter();
         
         if (text.includes("найди") || text.includes("где") || text.includes("поиск")) {
-            const queryMap = { "аптек": "pharmacy", "азс": "fuel", "газ": "fuel", "еда": "restaurant", "кафе": "cafe", "магазин": "shop", "банк": "bank" };
+            const queryMap = { "аптек": "pharmacy", "азс": "fuel", "газ": "fuel", "еда": "restaurant", "магазин": "shop", "банк": "bank" };
             let foundTag = null;
             for (let key in queryMap) { if (text.includes(key)) foundTag = queryMap[key]; }
-
             if (foundTag) {
-                appendMsg("ЦЕНТР-9", `Запрос принят. Сканирую сектор Украина на наличие ${foundTag}...`, true);
+                appendMsg("ЦЕНТР-9", `Запрос принят. Сканирую сектор UA на наличие ${foundTag}...`, true);
                 searchOverpass(foundTag, c.lat, c.lng);
                 return;
             }
         }
 
         let responseText = "";
-        
         if (text === "статус") {
-            responseText = `ОТЧЕТ: Регион: Украина, г. ${currentCity}. Координаты: ${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}E. Погода: ${currentWeather.temp}°C, ${currentWeather.status}. Спутников: 16. Угроз нет.`;
+            responseText = `ОТЧЕТ: Украина, регион: ${currentCity}. Координаты: ${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}E. Погода: ${currentWeather.temp}°C. Спутников: 16.`;
         } else if (text === "координаты") {
             responseText = `Текущая фиксация: [${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}]. Сектор заблокирован.`;
-        } else if (text === "чисто") {
-            responseText = "Сканирование завершено. Аномалий не обнаружено. Сектор чист.";
         } else if (text === "sos") {
-            responseText = "ВНИМАНИЕ: Сигнал бедствия активирован. Координаты переданы. Ожидайте группу поддержки.";
+            responseText = "ВНИМАНИЕ: Сигнал бедствия активирован в UA-зоне. Координаты переданы.";
             savePoi(c.lng, c.lat, "SOS SIGNAL", "ТРЕВОГА: ПОСЛЕДНЯЯ ПОЗИЦИЯ");
         } else if (text === "цель") {
             if (savedPois.length > 0) {
                 const last = savedPois[savedPois.length-1];
                 responseText = `Последняя цель: ${last.title}. Дистанция зафиксирована.`;
                 mapBottom.flyTo({ center: [last.lng, last.lat], zoom: 17 });
-            } else {
-                responseText = "Цели не заданы. Используйте маркер для выбора объекта.";
-            }
+            } else { responseText = "Цели не заданы."; }
         } else {
-            const generic = ["Данные получены.", "Команда принята.", "Синхронизация завершена.", "Ожидаю указаний."];
-            responseText = generic[Math.floor(Math.random()*generic.length)];
+            responseText = "Данные по сектору Украина получены. Ожидаю указаний.";
         }
 
         setTimeout(() => { appendMsg("ЦЕНТР-9", responseText, true); speak(responseText); }, 400);
     }
 
     async function searchOverpass(tag, lat, lng) {
-        const radius = 10000;
-        const query = `[out:json];(node["amenity"="${tag}"](around:${radius},${lat},${lng});node["shop"="${tag}"](around:${radius},${lat},${lng}););out body;`;
+        // Ограничение поиска по радиусу вокруг текущего центра, но API будет работать в рамках Украины
+        const query = `[out:json];(node["amenity"="${tag}"](around:5000,${lat},${lng});node["shop"="${tag}"](around:5000,${lat},${lng}););out body;`;
         const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-
         try {
             const res = await fetch(url);
             const data = await res.json();
             botMarkers.forEach(m => m.remove());
             botMarkers = [];
-
             if (data.elements && data.elements.length > 0) {
                 data.elements.slice(0, 15).forEach(el => {
-                    const name = el.tags.name || "Объект";
+                    const name = el.tags.name || "UA-OBJECT";
                     const botEl = document.createElement('div');
                     botEl.className = 'custom-poi bot-marker';
                     botEl.innerHTML = ICONS[tag] || ICONS.default;
                     const m = new maplibregl.Marker({ element: botEl }).setLngLat([el.lon, el.lat]).addTo(mapBottom);
-                    botEl.onclick = () => selectPoi(el.id, [el.lon, el.lat], name, `Тип: ${tag.toUpperCase()}`);
+                    botEl.onclick = () => selectPoi(el.id, [el.lon, el.lat], name, `UA-SECTOR: ${tag.toUpperCase()}`);
                     botMarkers.push(m);
                 });
-                const response = `Обнаружено: ${data.elements.length} ед. на территории Украины. Ближайшие отмечены.`;
-                appendMsg("ЦЕНТР-9", response, true);
-                speak(response);
-                mapBottom.flyTo({ center: [data.elements[0].lon, data.elements[0].lat], zoom: 15 });
-            } else {
-                const fail = "Объектов не обнаружено. Поиск по Украине продолжается...";
-                appendMsg("ЦЕНТР-9", fail, true);
-                speak(fail);
+                appendMsg("ЦЕНТР-9", `Найдено UA-объектов: ${data.elements.length}.`, true);
             }
-        } catch (e) { appendMsg("ЦЕНТР-9", "Сбой связи с базой данных.", true); }
+        } catch (e) { appendMsg("ЦЕНТР-9", "Сбой базы данных UA-NET.", true); }
     }
 
     function handleSearchInput(val) {
@@ -411,56 +435,21 @@
         performSearch();
     }
 
-    async function fetchWeatherData(lat, lng) {
-        try {
-            const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`;
-            const geoRes = await fetch(geoUrl);
-            const geoData = await geoRes.json();
-            currentCity = geoData.address.city || geoData.address.town || geoData.address.village || "Украина";
-
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
-            const response = await fetch(url);
-            const data = await response.json();
-            const curr = data.current;
-            const weatherDesc = { 0: "ЯСНО", 1: "ПРЕИМ. ЯСНО", 2: "ОБЛАЧНО", 3: "ПАСМУРНО", 61: "ДОЖДЬ", 95: "ГРОЗА" };
-            currentWeather = { temp: Math.round(curr.temperature_2m), status: weatherDesc[curr.weather_code] || "СТАБИЛЬНО", wind: curr.wind_speed_10m };
-
-            document.getElementById('weather-val').innerHTML = `
-                <div class="ticker-line">РЕГИОН: УКРАИНА | ${currentCity.toUpperCase()} | ${lat.toFixed(3)}N ${lng.toFixed(3)}E</div>
-                <div class="ticker-line">МЕТЕО: ${currentWeather.status} | ТЕМП: ${currentWeather.temp}°C | ВЕТЕР: ${currentWeather.wind} КМ/Ч</div>
-                <div class="ticker-line">СИСТЕМА: АКТИВНА | КАНАЛ: ЦЕНТР-9 ОНЛАЙН</div>
-            `;
-        } catch (e) { console.error(e); }
-    }
-
     async function performSearch() {
         const query = document.getElementById('map-search').value.trim();
-        document.getElementById('search-suggestions').style.display = 'none';
         if (!query) return;
         playBeep();
-        speak(`Поиск ${query}`);
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+            // Ограничение Nominatim поиском только в Украине (countrycodes=ua)
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ua&limit=1&accept-language=uk`;
             const res = await fetch(url);
             const data = await res.json();
             if (data && data.length > 0) {
-                const item = data[0];
-                mapBottom.flyTo({ center: [parseFloat(item.lon), parseFloat(item.lat)], zoom: 17, speed: 1.5 });
-                appendMsg("СИСТЕМА", `Объект: ${item.display_name.split(',')[0]}`, true);
+                mapBottom.flyTo({ center: [parseFloat(data[0].lon), parseFloat(data[0].lat)], zoom: 17 });
+            } else {
+                appendMsg("ЦЕНТР-9", "Объект вне зоны покрытия Украины или не найден.", true);
             }
-        } catch (e) { appendMsg("СИСТЕМА", `Ошибка`, true); }
-    }
-
-    function initUserLocation() {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                const { latitude: lat, longitude: lng } = pos.coords;
-                currentCenter = [lng, lat];
-                [mapBottom, mapTop, miniMap].forEach(m => m.jumpTo({ center: currentCenter }));
-                dirMarker.setLngLat(currentCenter);
-                fetchWeatherData(lat, lng);
-            }, () => fetchWeatherData(currentCenter[1], currentCenter[0]));
-        } else { fetchWeatherData(currentCenter[1], currentCenter[0]); }
+        } catch (e) {}
     }
 
     function updateClock() {
@@ -468,7 +457,6 @@
         document.getElementById('time-val').innerText = now.toLocaleTimeString('ru-RU', { hour12: false });
         document.getElementById('date-val').innerText = now.toLocaleDateString('ru-RU');
     }
-    setInterval(updateClock, 1000);
 
     function playBeep(isAlert = false) {
         try {
@@ -486,7 +474,7 @@
     function speak(text) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'ru-RU'; msg.pitch = 0.8; msg.rate = 1.1;
+        msg.lang = 'ru-RU'; msg.pitch = 0.8;
         window.speechSynthesis.speak(msg);
     }
 
@@ -494,7 +482,7 @@
         const container = document.getElementById('chat-msgs');
         const msgDiv = document.createElement('div');
         msgDiv.className = `msg ${isBot ? 'bot' : ''}`;
-        msgDiv.innerHTML = `<b>${sender} [${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}]</b> <span class="txt"></span>`;
+        msgDiv.innerHTML = `<b>${sender}</b> <span class="txt"></span>`;
         container.appendChild(msgDiv);
         let i = 0; const span = msgDiv.querySelector('.txt');
         function typing() { if (i < text.length) { span.innerHTML += text.charAt(i++); setTimeout(typing, 10); container.scrollTop = container.scrollHeight; } }
@@ -525,10 +513,8 @@
 
     mapBottom.on('move', () => {
         const c = mapBottom.getCenter();
-        const b = mapBottom.getBearing();
-        const z = mapBottom.getZoom();
-        miniMap.jumpTo({ center: c, bearing: b, zoom: Math.max(z - 2.5, 12) });
-        mapTop.jumpTo({ center: c, zoom: z, pitch: mapBottom.getPitch(), bearing: b });
+        miniMap.jumpTo({ center: c, bearing: mapBottom.getBearing(), zoom: Math.max(mapBottom.getZoom() - 2.5, 12) });
+        mapTop.jumpTo({ center: c, zoom: mapBottom.getZoom(), pitch: mapBottom.getPitch(), bearing: mapBottom.getBearing() });
         dirMarker.setLngLat(c);
         document.getElementById('loc-name').innerText = `${c.lat.toFixed(4)}N ${c.lng.toFixed(4)}E`;
         updateSelection();
@@ -580,11 +566,8 @@
     }
 
     mapBottom.on('click', (e) => {
-        if (selectedPoiId && !e.originalEvent.target.closest('.custom-poi') && !e.originalEvent.target.closest('.maplibregl-popup')) {
-             exitPoiSelection(); return; 
-        }
+        if (selectedPoiId && !e.originalEvent.target.closest('.custom-poi')) { exitPoiSelection(); return; }
         if (!isAddingPoi) return;
-
         const popup = new maplibregl.Popup({ closeButton: false, offset: [0, -10] })
             .setLngLat(e.lngLat)
             .setHTML(`
@@ -594,7 +577,6 @@
                     <button id="save-poi-btn">Зафиксировать</button>
                 </div>
             `).addTo(mapBottom);
-
         document.getElementById('save-poi-btn').onclick = () => { 
             const t = document.getElementById('poi-title').value;
             const d = document.getElementById('poi-desc').value;
@@ -606,35 +588,46 @@
 
     function savePoi(lng, lat, title, desc, isInitialLoad = false, id = null) {
         const poiId = id || Date.now();
-        const finalTitle = title || "ОБЪЕКТ-" + Math.floor(Math.random()*999);
-        const finalDesc = desc || "Данные отсутствуют";
+        const finalTitle = title || "UA-OBJECT-" + Math.floor(Math.random()*999);
+        const finalDesc = desc || "Нет данных";
+        
+        const existingPoiIndex = savedPois.findIndex(p => p.id == poiId);
+        if (existingPoiIndex !== -1) {
+            savedPois[existingPoiIndex] = { ...savedPois[existingPoiIndex], title: finalTitle, desc: finalDesc };
+            if (markersMap[poiId]) {
+                markersMap[poiId].getElement().onclick = (ev) => { 
+                    ev.stopPropagation(); 
+                    selectPoi(poiId, [lng, lat], finalTitle, finalDesc); 
+                };
+            }
+            return;
+        }
+
         const el = document.createElement('div'); el.className = 'custom-poi'; el.dataset.id = poiId;
         el.innerHTML = ICONS.default;
-        
         const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
         markersMap[poiId] = marker;
         el.onclick = (ev) => { ev.stopPropagation(); selectPoi(poiId, [lng, lat], finalTitle, finalDesc); };
         
         if (!isInitialLoad) {
-            speak(`${finalTitle}. ${finalDesc}.`);
             savedPois.push({ id: poiId, lng, lat, title: finalTitle, desc: finalDesc });
-            syncStorage();
+            syncStorage(); 
             selectPoi(poiId, [lng, lat], finalTitle, finalDesc); 
         }
     }
 
     function selectPoi(id, coords, title, desc) {
-        playBeep();
-        selectedPoiId = id;
+        playBeep(); selectedPoiId = id;
         Object.values(markersMap).forEach(m => m.getElement().classList.remove('selected'));
         if(markersMap[id]) markersMap[id].getElement().classList.add('selected');
         document.getElementById('main-controls').classList.add('hidden');
         document.getElementById('poi-edit-controls').classList.remove('hidden');
         
-        speak(`${title}. ${desc}. Широта ${coords[1].toFixed(3)}, долгота ${coords[0].toFixed(3)}.`);
-        
-        const popups = document.getElementsByClassName('maplibregl-popup');
-        while(popups[0]) popups[0].parentNode.removeChild(popups[0]);
+        const speechText = `${title}. ${desc}.`;
+        speak(speechText);
+
+        const pops = document.getElementsByClassName('maplibregl-popup');
+        while(pops[0]) pops[0].remove();
 
         new maplibregl.Popup({ closeButton: false, offset: [0, -15] })
             .setLngLat(coords)
@@ -647,8 +640,8 @@
         Object.values(markersMap).forEach(m => m.getElement().classList.remove('selected'));
         document.getElementById('main-controls').classList.remove('hidden');
         document.getElementById('poi-edit-controls').classList.add('hidden');
-        const popups = document.getElementsByClassName('maplibregl-popup');
-        while(popups[0]) popups[0].parentNode.removeChild(popups[0]);
+        const pops = document.getElementsByClassName('maplibregl-popup');
+        while(pops[0]) pops[0].remove();
     }
 
     function handlePoiDelete() {
@@ -656,27 +649,19 @@
         if (markersMap[selectedPoiId]) markersMap[selectedPoiId].remove();
         delete markersMap[selectedPoiId];
         savedPois = savedPois.filter(p => p.id != selectedPoiId);
-        syncStorage(); 
-        speak("Удалено.");
-        exitPoiSelection();
+        syncStorage(); exitPoiSelection();
     }
 
     function handlePoiEdit() {
         if (!selectedPoiId) return;
-        const poiIdx = savedPois.findIndex(p => p.id == selectedPoiId);
-        if (poiIdx === -1) return;
-        const currentPoi = savedPois[poiIdx];
-        const nT = prompt("НОВОЕ ИМЯ:", currentPoi.title);
-        if (nT !== null) { 
-            const nD = prompt("НОВОЕ ОПИСАНИЕ:", currentPoi.desc);
-            currentPoi.title = nT || currentPoi.title;
-            currentPoi.desc = nD || currentPoi.desc;
-            if (markersMap[selectedPoiId]) markersMap[selectedPoiId].remove();
-            savePoi(currentPoi.lng, currentPoi.lat, currentPoi.title, currentPoi.desc, true, currentPoi.id);
-            speak(`Обновлено. ${currentPoi.title}`);
-            syncStorage(); 
-            exitPoiSelection(); 
-        }
+        const poi = savedPois.find(p => p.id == selectedPoiId);
+        const newTitle = prompt("ИЗМЕНИТЬ ИМЯ:", poi.title);
+        if (newTitle === null) return;
+        const newDesc = prompt("ИЗМЕНИТЬ ОПИСАНИЕ:", poi.desc);
+        if (newDesc === null) return;
+        savePoi(poi.lng, poi.lat, newTitle, newDesc, false, selectedPoiId);
+        syncStorage();
+        selectPoi(selectedPoiId, [poi.lng, poi.lat], newTitle, newDesc);
     }
 
     function syncStorage() { localStorage.setItem('neural_interface_pois', JSON.stringify(savedPois)); }
@@ -684,11 +669,12 @@
         const raw = localStorage.getItem('neural_interface_pois');
         if (raw) { 
             const data = JSON.parse(raw);
-            savedPois = data;
             data.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true, p.id)); 
+            savedPois = data;
         }
     }
 
+    setInterval(updateClock, 1000);
     updateClock();
     initUserLocation();
 </script>
