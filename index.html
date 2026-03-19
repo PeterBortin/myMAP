@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>NEURAL INTERFACE v14.9.9 - TACTICAL SCANNER</title>
+    <title>myMAP - Tactical Scanner</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -52,7 +52,7 @@
             justify-content: space-between; 
             align-items: center; 
             background: rgba(0, 5, 0, 0.7); 
-            backdrop-filter: blur(px);
+            backdrop-filter: blur(5px);
             padding: 10px 20px;
             box-sizing: border-box;
             pointer-events: auto;
@@ -63,29 +63,47 @@
 
         .weather-ticker {
             width: 100%;
+            height: 30px;
             background: rgba(0,10,0,0.8);
             overflow: hidden;
-            white-space: nowrap;
-            padding: 8px 0;
-            font-size: 12px;
+            padding: 0;
+            font-size: 11px;
             letter-spacing: 1px;
             pointer-events: auto;
             border-top: 1px solid var(--glass);
-            border-bottom: none; 
             position: relative;
             z-index: 210;
         }
         .ticker-content {
-            display: inline-block;
-            padding-left: 0%;
-            animation: ticker 60s linear infinite;
+            display: flex;
+            flex-direction: column;
+            animation: ticker-up 15s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
             color: var(--neon);
             text-shadow: 0 0 5px var(--neon);
+            padding-left: 20px;
         }
-        @keyframes ticker {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
+        .ticker-line { height: 30px; line-height: 30px; white-space: nowrap; }
+        @keyframes ticker-up {
+            0%, 20% { transform: translateY(0); }
+            25%, 45% { transform: translateY(-30px); }
+            50%, 70% { transform: translateY(-60px); }
+            75%, 95% { transform: translateY(-90px); }
+            100% { transform: translateY(0); }
         }
+
+        .search-block { width: 100%; background: transparent; display: flex; padding: 12px 15px; box-sizing: border-box; pointer-events: auto; z-index: 205; position: relative; }
+        .search-input-wrapper { position: relative; flex: 1; display: flex; align-items: center; max-width: 400px; margin: 0 auto; }
+        .search-block input { width: 100%; background: rgba(0, 10, 0, 0.8); border: 1px solid var(--neon); color: var(--neon); padding: 10px 45px 10px 20px; font-family: monospace; font-size: 11px; outline: none; transition: all 0.3s; border-radius: 20px; box-shadow: 0 0 10px rgba(0, 255, 126, 0.1); backdrop-filter: blur(5px); }
+        .search-block input:focus { border-color: var(--neon); box-shadow: 0 0 20px rgba(50, 255, 126, 0.3); background: rgba(0, 20, 0, 0.9); }
+        .search-block input::placeholder { color: var(--neon); opacity: 0.4; }
+        
+        .search-btn { position: absolute; right: 15px; background: none; border: none; color: var(--neon); cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: 0.2s; }
+        .search-btn:hover { opacity: 1; filter: drop-shadow(0 0 5px var(--neon)); }
+        .search-btn svg { width: 20px; height: 20px; fill: currentColor; }
+
+        .search-suggestions { position: absolute; top: 100%; left: 20px; right: 20px; background: rgba(0, 10, 0, 0.95); border: 1px solid var(--neon); border-top: none; display: none; flex-direction: column; z-index: 206; max-height: 200px; overflow-y: auto; border-radius: 0 0 10px 10px; }
+        .suggestion-item { padding: 10px 20px; cursor: pointer; font-size: 10px; border-bottom: 1px solid var(--glass); text-transform: uppercase; }
+        .suggestion-item:hover { background: var(--neon); color: #000; }
         
         .stat-indicator { display: inline-block; width: 8px; height: 8px; background: var(--neon); border-radius: 50%; margin-right: 6px; box-shadow: 0 0 8px var(--neon); animation: pulse-dot 1s infinite; vertical-align: middle; }
         @keyframes pulse-dot { 0% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.7; } }
@@ -104,21 +122,23 @@
         .searching-anim { animation: pulse-text 1.5s infinite; }
         @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 10, 0, 0.8); backdrop-filter: blur(10px); border: none; border-radius: 32px; pointer-events: auto; z-index: 300; transition: opacity 0.3s, transform 0.3s; }
+        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 10, 0, 0.8); backdrop-filter: blur(10px); border: 1px solid var(--glass); border-radius: 32px; pointer-events: auto; z-index: 300; transition: opacity 0.3s, transform 0.3s; }
         .controls.hidden { opacity: 0; pointer-events: none; transform: translate(-50%, 20px); }
         .icon-btn { background: none; border: none; color: var(--neon); cursor: pointer; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; transition: 0.2s; opacity: 0.6; }
         .icon-btn:hover, .icon-btn.active { opacity: 1; filter: drop-shadow(0 0 8px var(--neon)); }
         .icon-btn svg { width: 26px; height: 26px; fill: currentColor; }
 
-        #poi-edit-controls { border-color: var(--alert); background: rgba(20, 0, 0, 0.9); }
-        .edit-btn-alert { color: var(--alert); opacity: 0.7; }
-        .edit-btn-alert:hover { opacity: 1; filter: drop-shadow(0 0 8px var(--alert)); }
-        .edit-btn-exit { color: #fff; }
+        #poi-edit-controls { background: rgba(0, 10, 0, 0.85); box-shadow: 0 0 20px var(--glass); }
+        .edit-btn-alert { color: var(--alert); }
+        .edit-btn-alert:hover { filter: drop-shadow(0 0 8px var(--alert)); }
 
-        #chat-panel { position: absolute; right: -320px; top: 0; bottom: 0; width: 300px; background: var(--panel-bg); backdrop-filter: blur(20px); border-left: 1px solid var(--neon); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 400; pointer-events: auto; display: flex; flex-direction: column; }
+        #chat-panel { position: absolute; right: -320px; top: 0; bottom: 0; width: 300px; background: var(--panel-bg); backdrop-filter: blur(20px); border-left: 1px solid var(--neon); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 400; pointer-events: auto; display: flex; flex-direction: column; touch-action: pan-y; }
         #chat-panel.open { right: 0; }
-        .chat-header { padding: 25px 15px 10px; font-size: 10px; border-bottom: 1px solid var(--neon); display: flex; justify-content: space-between; letter-spacing: 1px; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; font-size: 11px; display: flex; flex-direction: column; gap: 15px; }
+        .chat-header { padding: 25px 15px 10px; font-size: 10px; border-bottom: 1px solid var(--neon); display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px; }
+        .close-chat-btn { background: none; border: none; color: var(--neon); cursor: pointer; padding: 5px; opacity: 0.7; }
+        .close-chat-btn:hover { opacity: 1; }
+        
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; font-size: 11px; display: flex; flex-direction: column; gap: 15px; scrollbar-width: thin; scrollbar-color: var(--neon) transparent; }
         .msg { border-left: 1px solid var(--neon); padding-left: 10px; animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .msg b { color: #fff; display: block; margin-bottom: 4px; font-size: 9px; opacity: 0.6; }
@@ -128,12 +148,18 @@
         .qr-btn { background: transparent; border: 1px solid var(--neon); color: var(--neon); font-size: 9px; padding: 5px 10px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         .qr-btn:hover { background: var(--neon); color: #000; }
 
-        .chat-input-area { padding: 15px; border-top: 1px solid var(--neon); display: flex; gap: 8px; background: #000; }
-        .chat-input-area input { background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 12px; flex: 1; font-family: monospace; font-size: 12px; outline: none; }
+        .chat-input-area { padding: 15px; border-top: 1px solid var(--neon); display: flex; gap: 8px; background: #000; align-items: center; }
+        .chat-input-area input { background: rgba(50, 255, 126, 0.05); border: 1px solid var(--neon); color: var(--neon); padding: 12px; flex: 1; font-family: monospace; font-size: 12px; outline: none; border-radius: 4px; }
+        .send-msg-btn { background: var(--neon); border: none; width: 40px; height: 40px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #000; transition: 0.2s; flex-shrink: 0; }
+        .send-msg-btn:hover { background: #fff; box-shadow: 0 0 15px var(--neon); }
+        .send-msg-btn svg { width: 20px; height: 20px; fill: currentColor; }
 
-        .custom-poi { width: 14px; height: 14px; background: var(--neon); border: 2px solid #000; transform: rotate(45deg); box-shadow: 0 0 15px var(--neon); border-radius: 2px; cursor: pointer; pointer-events: auto; transition: 0.2s; }
+        .custom-poi { width: 14px; height: 14px; background: var(--neon); border: 2px solid #000; transform: rotate(45deg); box-shadow: 0 0 15px var(--neon); border-radius: 2px; cursor: pointer; pointer-events: auto; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .custom-poi svg { transform: rotate(-45deg); width: 10px; height: 10px; fill: #000; }
         .custom-poi:hover { transform: rotate(45deg) scale(1.3); }
         .custom-poi.selected { background: var(--alert); box-shadow: 0 0 20px var(--alert); transform: rotate(45deg) scale(1.4); }
+        .custom-poi.bot-marker { border-radius: 50%; transform: none; background: #fff; border-color: var(--neon); }
+        .custom-poi.bot-marker svg { transform: none; }
         
         .maplibregl-popup { z-index: 500; }
         .maplibregl-popup-content { background: transparent; padding: 0; border: none; box-shadow: none; }
@@ -156,23 +182,31 @@
 
 <div id="chat-panel">
     <div class="chat-header">
-        <span>Связь: <span style="color:#fff">Центр-9</span></span>
-        <div style="cursor:pointer" onclick="toggleChat()">Х</div>
+        <span>СВЯЗЬ: <span style="color:#fff">ЦЕНТР-9</span></span>
+        <button class="close-chat-btn" onclick="toggleChat()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
     </div>
     <div class="chat-messages" id="chat-msgs">
-        <div class="msg bot"><b>ЦЕНТР-9</b> Канал синхронизирован. Ожидаю рапорт из сектора.</div>
+        <div class="msg bot"><b>ЦЕНТР-9</b> Канал синхронизирован. Ожидаю рапорт. Спутниковая группировка готова к наведению.</div>
     </div>
     
     <div class="quick-replies">
         <button class="qr-btn" onclick="quickSend('Статус')">Статус</button>
+        <button class="qr-btn" onclick="quickSend('Координаты')">Координаты</button>
         <button class="qr-btn" onclick="quickSend('Цель')">Цель</button>
         <button class="qr-btn" onclick="quickSend('Чисто')">Чисто</button>
-        <button class="qr-btn" onclick="quickSend('Координаты')">Координаты</button>
+        <button class="qr-btn" onclick="quickSend('SOS')">SOS</button>
+        <button class="qr-btn" onclick="quickSend('Найди АЗС')">АЗС</button>
+        <button class="qr-btn" onclick="quickSend('Найди аптеку')">Аптека</button>
+        <button class="qr-btn" onclick="quickSend('Найди магазин')">Магазин</button>
     </div>
 
     <div class="chat-input-area">
         <input type="text" id="chat-input" placeholder="ДОКЛАД..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMsg()">
-        <button onclick="sendMsg()" style="background:var(--neon); border:none; padding:0 18px; cursor:pointer; font-weight:bold">></button>
+        <button class="send-msg-btn" onclick="sendMsg()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
     </div>
 </div>
 
@@ -196,7 +230,19 @@
         </div>
         <div class="weather-ticker">
             <div class="ticker-content" id="weather-val">
-                Загрузка..
+                <div class="ticker-line">ИНИЦИАЛИЗАЦИЯ МЕТЕО-ДАННЫХ...</div>
+                <div class="ticker-line">СИНХРОНИЗАЦИЯ С ЦЕНТРОМ-9...</div>
+                <div class="ticker-line">ПОИСК СПУТНИКОВОГО СИГНАЛА...</div>
+                <div class="ticker-line">ПОТОК ДАННЫХ ЗАШИФРОВАН...</div>
+            </div>
+        </div>
+        <div class="search-block">
+            <div class="search-input-wrapper">
+                <input type="text" id="map-search" placeholder="ПОИСК ОБЪЕКТА / КООРДИНАТ..." autocomplete="off" onkeydown="if(event.key==='Enter') performSearch()" oninput="handleSearchInput(this.value)">
+                <button class="search-btn" onclick="performSearch()" title="Найти">
+                    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                </button>
+                <div id="search-suggestions" class="search-suggestions"></div>
             </div>
         </div>
     </div>
@@ -213,14 +259,11 @@
     </div>
 
     <div class="controls hidden" id="poi-edit-controls">
-        <button class="icon-btn edit-btn-alert" onclick="menuAction('Изменение данных', handlePoiEdit)" title="Edit POI">
+        <button class="icon-btn" onclick="menuAction('Изменение данных', handlePoiEdit)" title="Edit POI">
             <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         </button>
         <button class="icon-btn edit-btn-alert" onclick="menuAction('Удаление объекта', handlePoiDelete)" title="Delete POI">
             <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
-        <button class="icon-btn edit-btn-exit" onclick="menuAction('Выход из режима', exitPoiSelection)" title="Cancel">
-            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
     </div>
 </div>
@@ -234,7 +277,21 @@
         }
     };
 
+    const SEARCH_HINTS = ["Магазин", "Аптека", "Банкомат", "АЗС", "Парк", "Метро", "Остановка", "Школа", "ТЦ", "Кафе", "Ресторан", "Почта", "Отель", "Больница", "Спортзал"];
+    
+    const ICONS = {
+        default: `<svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>`,
+        fuel: `<svg viewBox="0 0 24 24"><path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-1.1-.9-2-2-2-.27 0-.52.05-.73.12zM12 10H6V5h6v5z"/></svg>`,
+        pharmacy: `<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/></svg>`,
+        restaurant: `<svg viewBox="0 0 24 24"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>`,
+        shop: `<svg viewBox="0 0 24 24"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2c0 .55.45 1 1 1v5h10v-5h6c.55 0 1-.45 1-1zm-9 4H6v-4h6v4z"/></svg>`,
+        bank: `<svg viewBox="0 0 24 24"><path d="M11.5 1L2 6v2h19V6L11.5 1zM6.25 10v7h3v-7h-3zm6.25 0v7h3v-7h-3zm6.25 0v7h3v-7h-3zM2 19v2h19v-2H2z"/></svg>`
+    };
+
     let currentCenter = [30.5234, 50.4501];
+    let currentCity = "Украина";
+    let currentWeather = { temp: "--", status: "--", wind: "--" };
+    
     const config = { center: currentCenter, zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
 
     const mapBottom = new maplibregl.Map({ container: 'map-bottom', style: STYLES.vector, ...config });
@@ -251,40 +308,147 @@
     let selectedPoiId = null;
     let savedPois = [];
     let markersMap = {}; 
+    let botMarkers = [];
 
-    const state = { statusIdx: 0, targetIdx: 0, clearIdx: 0, coordIdx: 0 };
+    let touchStartX = 0;
+    const chatPanel = document.getElementById('chat-panel');
+    chatPanel.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
+    chatPanel.addEventListener('touchend', e => {
+        if (e.changedTouches[0].screenX - touchStartX > 100) {
+            if (chatPanel.classList.contains('open')) toggleChat();
+        }
+    });
 
     async function botResponse(userText) {
         const text = userText.toLowerCase().trim();
         const c = mapBottom.getCenter();
-        const replies = {
-            status: [`Сканирование сектора ${c.lat.toFixed(2)}: Активных угроз не обнаружено.`, `Внимание: Зафиксированы помехи в нижнем диапазоне.`, `Все системы функционируют штатно.`, `Обнаружена аномалия сигнатуры.`],
-            target: [`Цель подтверждена. Дистанция: ${Math.floor(Math.random()*500 + 100)}м.`, `Объект в захвате. Ожидаю приказа.`, `Сигнатура опознана. Снимаю приоритет.`, `Потеря визуального контакта.`],
-            clear: [`Принято. Перехожу в пассивный режим.`, `Рапорт получен. Логи зашифрованы.`, `Сектор признан безопасным.`, `Подтверждаю. Чисто.`],
-            coords: [`Текущий квадрат: ${c.lat.toFixed(5)}N, ${c.lng.toFixed(5)}E.`, `Высота: ${Math.floor(Math.random()*50 + 150)}м.`, `Точность: 0.8м.`, `Координаты синхронизированы.`]
-        };
+        
+        if (text.includes("найди") || text.includes("где") || text.includes("поиск")) {
+            const queryMap = { "аптек": "pharmacy", "азс": "fuel", "газ": "fuel", "еда": "restaurant", "кафе": "cafe", "магазин": "shop", "банк": "bank" };
+            let foundTag = null;
+            for (let key in queryMap) { if (text.includes(key)) foundTag = queryMap[key]; }
+
+            if (foundTag) {
+                appendMsg("ЦЕНТР-9", `Запрос принят. Сканирую сектор Украина на наличие ${foundTag}...`, true);
+                searchOverpass(foundTag, c.lat, c.lng);
+                return;
+            }
+        }
 
         let responseText = "";
-        if (text.includes("статус")) { responseText = replies.status[state.statusIdx++ % replies.status.length]; } 
-        else if (text.includes("цель")) { responseText = replies.target[state.targetIdx++ % replies.target.length]; } 
-        else if (text.includes("чисто")) { responseText = replies.clear[state.clearIdx++ % replies.clear.length]; } 
-        else if (text.includes("коорд")) { responseText = replies.coords[state.coordIdx++ % replies.coords.length]; } 
-        else { responseText = `Запрос "${text}" принят. Анализ завершен.`; }
+        
+        if (text === "статус") {
+            responseText = `ОТЧЕТ: Регион: Украина, г. ${currentCity}. Координаты: ${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}E. Погода: ${currentWeather.temp}°C, ${currentWeather.status}. Спутников: 16. Угроз нет.`;
+        } else if (text === "координаты") {
+            responseText = `Текущая фиксация: [${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}]. Сектор заблокирован.`;
+        } else if (text === "чисто") {
+            responseText = "Сканирование завершено. Аномалий не обнаружено. Сектор чист.";
+        } else if (text === "sos") {
+            responseText = "ВНИМАНИЕ: Сигнал бедствия активирован. Координаты переданы. Ожидайте группу поддержки.";
+            savePoi(c.lng, c.lat, "SOS SIGNAL", "ТРЕВОГА: ПОСЛЕДНЯЯ ПОЗИЦИЯ");
+        } else if (text === "цель") {
+            if (savedPois.length > 0) {
+                const last = savedPois[savedPois.length-1];
+                responseText = `Последняя цель: ${last.title}. Дистанция зафиксирована.`;
+                mapBottom.flyTo({ center: [last.lng, last.lat], zoom: 17 });
+            } else {
+                responseText = "Цели не заданы. Используйте маркер для выбора объекта.";
+            }
+        } else {
+            const generic = ["Данные получены.", "Команда принята.", "Синхронизация завершена.", "Ожидаю указаний."];
+            responseText = generic[Math.floor(Math.random()*generic.length)];
+        }
 
-        setTimeout(() => { appendMsg("ЦЕНТР", responseText, true); speak(responseText); }, 400);
+        setTimeout(() => { appendMsg("ЦЕНТР-9", responseText, true); speak(responseText); }, 400);
+    }
+
+    async function searchOverpass(tag, lat, lng) {
+        const radius = 10000;
+        const query = `[out:json];(node["amenity"="${tag}"](around:${radius},${lat},${lng});node["shop"="${tag}"](around:${radius},${lat},${lng}););out body;`;
+        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            botMarkers.forEach(m => m.remove());
+            botMarkers = [];
+
+            if (data.elements && data.elements.length > 0) {
+                data.elements.slice(0, 15).forEach(el => {
+                    const name = el.tags.name || "Объект";
+                    const botEl = document.createElement('div');
+                    botEl.className = 'custom-poi bot-marker';
+                    botEl.innerHTML = ICONS[tag] || ICONS.default;
+                    const m = new maplibregl.Marker({ element: botEl }).setLngLat([el.lon, el.lat]).addTo(mapBottom);
+                    botEl.onclick = () => selectPoi(el.id, [el.lon, el.lat], name, `Тип: ${tag.toUpperCase()}`);
+                    botMarkers.push(m);
+                });
+                const response = `Обнаружено: ${data.elements.length} ед. на территории Украины. Ближайшие отмечены.`;
+                appendMsg("ЦЕНТР-9", response, true);
+                speak(response);
+                mapBottom.flyTo({ center: [data.elements[0].lon, data.elements[0].lat], zoom: 15 });
+            } else {
+                const fail = "Объектов не обнаружено. Поиск по Украине продолжается...";
+                appendMsg("ЦЕНТР-9", fail, true);
+                speak(fail);
+            }
+        } catch (e) { appendMsg("ЦЕНТР-9", "Сбой связи с базой данных.", true); }
+    }
+
+    function handleSearchInput(val) {
+        const suggestionsDiv = document.getElementById('search-suggestions');
+        if (!val) { suggestionsDiv.style.display = 'none'; return; }
+        const filtered = SEARCH_HINTS.filter(h => h.toLowerCase().startsWith(val.toLowerCase()));
+        if (filtered.length > 0) {
+            suggestionsDiv.innerHTML = filtered.map(h => `<div class="suggestion-item" onclick="applySuggestion('${h}')">${h}</div>`).join('');
+            suggestionsDiv.style.display = 'flex';
+        } else { suggestionsDiv.style.display = 'none'; }
+    }
+
+    function applySuggestion(val) {
+        document.getElementById('map-search').value = val;
+        document.getElementById('search-suggestions').style.display = 'none';
+        performSearch();
     }
 
     async function fetchWeatherData(lat, lng) {
         try {
+            const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`;
+            const geoRes = await fetch(geoUrl);
+            const geoData = await geoRes.json();
+            currentCity = geoData.address.city || geoData.address.town || geoData.address.village || "Украина";
+
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
             const response = await fetch(url);
             const data = await response.json();
             const curr = data.current;
-            const weatherDesc = { 0: "ЯСНО", 3: "ПАСМУРНО", 45: "ТУМАН", 61: "ДОЖДЬ", 95: "ГРОЗА" };
-            const status = weatherDesc[curr.weather_code] || "СТАБИЛЬНО";
-            const weatherText = `РЕГИОН: ${lat.toFixed(4)}N ${lng.toFixed(4)}E | СТАТУС: ${status} | ТЕМП: ${curr.temperature_2m}°C | ВЕТЕР: ${curr.wind_speed_10m} КМ/Ч | ВСЕ ДАННЫЕ ЗАШИФРОВАНЫ | СИНХРОНИЗАЦИЯ С ЦЕНТРОМ-9 | `;
-            document.getElementById('weather-val').innerText = weatherText.repeat(3);
-        } catch (e) { document.getElementById('weather-val').innerText = "ОШИБКА МЕТЕО-СКАНИРОВАНИЯ... "; }
+            const weatherDesc = { 0: "ЯСНО", 1: "ПРЕИМ. ЯСНО", 2: "ОБЛАЧНО", 3: "ПАСМУРНО", 61: "ДОЖДЬ", 95: "ГРОЗА" };
+            currentWeather = { temp: Math.round(curr.temperature_2m), status: weatherDesc[curr.weather_code] || "СТАБИЛЬНО", wind: curr.wind_speed_10m };
+
+            document.getElementById('weather-val').innerHTML = `
+                <div class="ticker-line">РЕГИОН: УКРАИНА | ${currentCity.toUpperCase()} | ${lat.toFixed(3)}N ${lng.toFixed(3)}E</div>
+                <div class="ticker-line">МЕТЕО: ${currentWeather.status} | ТЕМП: ${currentWeather.temp}°C | ВЕТЕР: ${currentWeather.wind} КМ/Ч</div>
+                <div class="ticker-line">СИСТЕМА: АКТИВНА | КАНАЛ: ЦЕНТР-9 ОНЛАЙН</div>
+            `;
+        } catch (e) { console.error(e); }
+    }
+
+    async function performSearch() {
+        const query = document.getElementById('map-search').value.trim();
+        document.getElementById('search-suggestions').style.display = 'none';
+        if (!query) return;
+        playBeep();
+        speak(`Поиск ${query}`);
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data && data.length > 0) {
+                const item = data[0];
+                mapBottom.flyTo({ center: [parseFloat(item.lon), parseFloat(item.lat)], zoom: 17, speed: 1.5 });
+                appendMsg("СИСТЕМА", `Объект: ${item.display_name.split(',')[0]}`, true);
+            }
+        } catch (e) { appendMsg("СИСТЕМА", `Ошибка`, true); }
     }
 
     function initUserLocation() {
@@ -294,10 +458,8 @@
                 currentCenter = [lng, lat];
                 [mapBottom, mapTop, miniMap].forEach(m => m.jumpTo({ center: currentCenter }));
                 dirMarker.setLngLat(currentCenter);
-                document.getElementById('loc-name').innerText = `${lat.toFixed(4)}N ${lng.toFixed(4)}E`;
                 fetchWeatherData(lat, lng);
-                appendMsg("СИСТЕМА", `Геопозиция синхронизирована: Квадрат ${lat.toFixed(2)}N`, true);
-            }, () => fetchWeatherData(currentCenter[1], currentCenter[0]), { enableHighAccuracy: true });
+            }, () => fetchWeatherData(currentCenter[1], currentCenter[0]));
         } else { fetchWeatherData(currentCenter[1], currentCenter[0]); }
     }
 
@@ -305,7 +467,6 @@
         const now = new Date();
         document.getElementById('time-val').innerText = now.toLocaleTimeString('ru-RU', { hour12: false });
         document.getElementById('date-val').innerText = now.toLocaleDateString('ru-RU');
-        if (Math.random() > 0.95) document.getElementById('sat-val').innerText = `${20 + Math.floor(Math.random() * 8)} ACTIVE`;
     }
     setInterval(updateClock, 1000);
 
@@ -325,7 +486,7 @@
     function speak(text) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'ru-RU'; msg.pitch = 0.6; msg.rate = 1.1;
+        msg.lang = 'ru-RU'; msg.pitch = 0.8; msg.rate = 1.1;
         window.speechSynthesis.speak(msg);
     }
 
@@ -333,10 +494,10 @@
         const container = document.getElementById('chat-msgs');
         const msgDiv = document.createElement('div');
         msgDiv.className = `msg ${isBot ? 'bot' : ''}`;
-        msgDiv.innerHTML = `<b>${sender} [${new Date().toLocaleTimeString()}]</b> <span class="txt"></span>`;
+        msgDiv.innerHTML = `<b>${sender} [${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}]</b> <span class="txt"></span>`;
         container.appendChild(msgDiv);
         let i = 0; const span = msgDiv.querySelector('.txt');
-        function typing() { if (i < text.length) { span.innerHTML += text.charAt(i++); setTimeout(typing, 15); container.scrollTop = container.scrollHeight; } }
+        function typing() { if (i < text.length) { span.innerHTML += text.charAt(i++); setTimeout(typing, 10); container.scrollTop = container.scrollHeight; } }
         typing();
     }
 
@@ -419,19 +580,18 @@
     }
 
     mapBottom.on('click', (e) => {
-        if (selectedPoiId && !e.originalEvent.target.classList.contains('custom-poi')) {
-            exitPoiSelection();
-            return;
+        if (selectedPoiId && !e.originalEvent.target.closest('.custom-poi') && !e.originalEvent.target.closest('.maplibregl-popup')) {
+             exitPoiSelection(); return; 
         }
-
         if (!isAddingPoi) return;
+
         const popup = new maplibregl.Popup({ closeButton: false, offset: [0, -10] })
             .setLngLat(e.lngLat)
             .setHTML(`
                 <div class="marker-form">
-                    <input type="text" id="poi-title" placeholder="Название">
-                    <textarea id="poi-desc" placeholder="Комментарий"></textarea>
-                    <button id="save-poi-btn">Сохранить</button>
+                    <input type="text" id="poi-title" placeholder="Объект">
+                    <textarea id="poi-desc" placeholder="Описание"></textarea>
+                    <button id="save-poi-btn">Зафиксировать</button>
                 </div>
             `).addTo(mapBottom);
 
@@ -447,25 +607,18 @@
     function savePoi(lng, lat, title, desc, isInitialLoad = false, id = null) {
         const poiId = id || Date.now();
         const finalTitle = title || "ОБЪЕКТ-" + Math.floor(Math.random()*999);
-        const finalDesc = desc || "Сектор просканирован. Угроз не выявлено.";
-        
-        const el = document.createElement('div'); 
-        el.className = 'custom-poi';
-        el.dataset.id = poiId;
+        const finalDesc = desc || "Данные отсутствуют";
+        const el = document.createElement('div'); el.className = 'custom-poi'; el.dataset.id = poiId;
+        el.innerHTML = ICONS.default;
         
         const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
         markersMap[poiId] = marker;
-
-        el.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            selectPoi(poiId, [lng, lat], finalTitle, finalDesc);
-        });
-
+        el.onclick = (ev) => { ev.stopPropagation(); selectPoi(poiId, [lng, lat], finalTitle, finalDesc); };
+        
         if (!isInitialLoad) {
+            speak(`${finalTitle}. ${finalDesc}.`);
             savedPois.push({ id: poiId, lng, lat, title: finalTitle, desc: finalDesc });
             syncStorage();
-            appendMsg("СИСТЕМА", `Маркер установлен: ${finalTitle} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`, true);
-            speak(`Объект ${finalTitle} зафиксирован в базе данных.`);
             selectPoi(poiId, [lng, lat], finalTitle, finalDesc); 
         }
     }
@@ -473,79 +626,66 @@
     function selectPoi(id, coords, title, desc) {
         playBeep();
         selectedPoiId = id;
-        
-        document.querySelectorAll('.custom-poi').forEach(m => m.classList.remove('selected'));
-        const targetMarker = document.querySelector(`.custom-poi[data-id="${id}"]`);
-        if(targetMarker) targetMarker.classList.add('selected');
-
+        Object.values(markersMap).forEach(m => m.getElement().classList.remove('selected'));
+        if(markersMap[id]) markersMap[id].getElement().classList.add('selected');
         document.getElementById('main-controls').classList.add('hidden');
         document.getElementById('poi-edit-controls').classList.remove('hidden');
-
-        const oldPopups = document.getElementsByClassName('maplibregl-popup');
-        while(oldPopups[0]) oldPopups[0].parentNode.removeChild(oldPopups[0]);
+        
+        speak(`${title}. ${desc}. Широта ${coords[1].toFixed(3)}, долгота ${coords[0].toFixed(3)}.`);
+        
+        const popups = document.getElementsByClassName('maplibregl-popup');
+        while(popups[0]) popups[0].parentNode.removeChild(popups[0]);
 
         new maplibregl.Popup({ closeButton: false, offset: [0, -15] })
             .setLngLat(coords)
-            .setHTML(`<div class="poi-info-panel"><b>${title}</b>${desc}<small>ID: ${id} | ${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}</small></div>`)
+            .setHTML(`<div class="poi-info-panel"><b>${title}</b>${desc}<small>${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}</small></div>`)
             .addTo(mapBottom);
-        
-        speak(`${title}. Данные: ${desc}`);
     }
 
     function exitPoiSelection() {
         selectedPoiId = null;
-        document.querySelectorAll('.custom-poi').forEach(m => m.classList.remove('selected'));
+        Object.values(markersMap).forEach(m => m.getElement().classList.remove('selected'));
         document.getElementById('main-controls').classList.remove('hidden');
         document.getElementById('poi-edit-controls').classList.add('hidden');
-        
         const popups = document.getElementsByClassName('maplibregl-popup');
         while(popups[0]) popups[0].parentNode.removeChild(popups[0]);
     }
 
     function handlePoiDelete() {
         if (!selectedPoiId) return;
-        playBeep(true);
-        const poi = savedPois.find(p => p.id === selectedPoiId);
-        const title = poi ? poi.title : "объекта";
-        
-        if (markersMap[selectedPoiId]) {
-            markersMap[selectedPoiId].remove();
-            delete markersMap[selectedPoiId];
-        }
-        savedPois = savedPois.filter(p => p.id !== selectedPoiId);
-        syncStorage();
-        
-        appendMsg("СИСТЕМА", `Данные ${title} удалены из реестра`, true);
-        speak(`Объект ${title} стерт из памяти.`);
+        if (markersMap[selectedPoiId]) markersMap[selectedPoiId].remove();
+        delete markersMap[selectedPoiId];
+        savedPois = savedPois.filter(p => p.id != selectedPoiId);
+        syncStorage(); 
+        speak("Удалено.");
         exitPoiSelection();
     }
 
     function handlePoiEdit() {
-        const poi = savedPois.find(p => p.id === selectedPoiId);
-        if (!poi) return;
-
-        const newTitle = prompt("ИЗМЕНИТЬ ИМЯ:", poi.title);
-        const newDesc = prompt("ИЗМЕНИТЬ ДАННЫЕ:", poi.desc);
-
-        if (newTitle !== null) {
-            poi.title = newTitle;
-            poi.desc = newDesc || poi.desc;
-            syncStorage();
-            
-            appendMsg("СИСТЕМА", `Объект ${poi.id} переименован в ${newTitle}`, true);
-            speak(`Информация об объекте ${newTitle} обновлена.`);
-            exitPoiSelection();
-            selectPoi(poi.id, [poi.lng, poi.lat], poi.title, poi.desc);
+        if (!selectedPoiId) return;
+        const poiIdx = savedPois.findIndex(p => p.id == selectedPoiId);
+        if (poiIdx === -1) return;
+        const currentPoi = savedPois[poiIdx];
+        const nT = prompt("НОВОЕ ИМЯ:", currentPoi.title);
+        if (nT !== null) { 
+            const nD = prompt("НОВОЕ ОПИСАНИЕ:", currentPoi.desc);
+            currentPoi.title = nT || currentPoi.title;
+            currentPoi.desc = nD || currentPoi.desc;
+            if (markersMap[selectedPoiId]) markersMap[selectedPoiId].remove();
+            savePoi(currentPoi.lng, currentPoi.lat, currentPoi.title, currentPoi.desc, true, currentPoi.id);
+            speak(`Обновлено. ${currentPoi.title}`);
+            syncStorage(); 
+            exitPoiSelection(); 
         }
     }
 
     function syncStorage() { localStorage.setItem('neural_interface_pois', JSON.stringify(savedPois)); }
-
     function loadPois() {
         const raw = localStorage.getItem('neural_interface_pois');
-        if (raw) {
-            savedPois = JSON.parse(raw);
-            savedPois.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true, p.id));
+        if (raw) { 
+            const data = JSON.parse(raw);
+            savedPois = data;
+            data.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true, p.id)); 
         }
     }
 
@@ -554,4 +694,3 @@
 </script>
 </body>
 </html>
-
