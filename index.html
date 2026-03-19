@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>myMAP</title>
+    <title>NEURAL INTERFACE v14.9.9 - TACTICAL SCANNER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -37,7 +37,7 @@
 
         #map-top { z-index: 2; -webkit-mask-image: radial-gradient(circle, black 120px, transparent 200px); mask-image: radial-gradient(circle, black 120px, transparent 200px); pointer-events: none; opacity: 1; transition: opacity 0.3s; }
         
-        .glitch-flash { animation: flash-anim 0.4s ease-out forwards; }
+        .glitch-flash { animation: flash-anim 0.8s ease-out forwards; }
         @keyframes flash-anim {
             0% { opacity: 1; filter: brightness(5); }
             100% { opacity: 0; filter: brightness(1); }
@@ -52,14 +52,13 @@
             justify-content: space-between; 
             align-items: center; 
             background: rgba(0, 5, 0, 0.7); 
-            backdrop-filter: blur(10px); 
-            border-bottom: 1px solid var(--neon); 
+            backdrop-filter: blur(px);
             padding: 10px 20px;
             box-sizing: border-box;
             pointer-events: auto;
         }
 
-        .telemetry-box { font-size: 10px; line-height: 1.6; border-left: 2px solid var(--neon); padding-left: 12px; min-width: 220px; }
+        .telemetry-box { font-size: 10px; line-height: 1.6; min-width: 220px; }
         .telemetry-box b { color: #fff; letter-spacing: 1px; }
 
         .weather-ticker {
@@ -68,7 +67,7 @@
             overflow: hidden;
             white-space: nowrap;
             padding: 8px 0;
-            font-size: 10px;
+            font-size: 12px;
             letter-spacing: 1px;
             pointer-events: auto;
             border-top: 1px solid var(--glass);
@@ -92,7 +91,7 @@
         @keyframes pulse-dot { 0% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.7; } }
         .stat-active { color: var(--neon) !important; text-transform: uppercase; }
 
-        .minimap-container { width: 200px; height: 80px; background: #000; position: relative; overflow: hidden; border: 1px solid var(--neon); }
+        .minimap-container { width: 200px; height: 80px; background: #000; position: relative; overflow: hidden; }
         #minimap { width: 100%; height: 100%; filter: saturate(0.5) brightness(0.8) hue-rotate(80deg); }
         
         .user-dot-container { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
@@ -105,7 +104,7 @@
         .searching-anim { animation: pulse-text 1.5s infinite; }
         @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 10, 0, 0.8); backdrop-filter: blur(10px); border: none; border-radius: 2px; pointer-events: auto; z-index: 300; transition: opacity 0.3s, transform 0.3s; border: 1px solid var(--neon); }
+        .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(0, 10, 0, 0.8); backdrop-filter: blur(10px); border: none; border-radius: 32px; pointer-events: auto; z-index: 300; transition: opacity 0.3s, transform 0.3s; }
         .controls.hidden { opacity: 0; pointer-events: none; transform: translate(-50%, 20px); }
         .icon-btn { background: none; border: none; color: var(--neon); cursor: pointer; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; transition: 0.2s; opacity: 0.6; }
         .icon-btn:hover, .icon-btn.active { opacity: 1; filter: drop-shadow(0 0 8px var(--neon)); }
@@ -157,18 +156,18 @@
 
 <div id="chat-panel">
     <div class="chat-header">
-        <span>LINK_SECURE: <span style="color:#fff">Центр-9</span></span>
-        <div style="cursor:pointer" onclick="toggleChat()">[СВЕРНУТЬ]</div>
+        <span>Связь: <span style="color:#fff">Центр-9</span></span>
+        <div style="cursor:pointer" onclick="toggleChat()">Х</div>
     </div>
     <div class="chat-messages" id="chat-msgs">
-        <div class="msg bot"><b>ЦЕНТР</b> Канал синхронизирован. Ожидаю рапорт из сектора.</div>
+        <div class="msg bot"><b>ЦЕНТР-9</b> Канал синхронизирован. Ожидаю рапорт из сектора.</div>
     </div>
     
     <div class="quick-replies">
         <button class="qr-btn" onclick="quickSend('Статус')">Статус</button>
-        <button class="qr-btn" onclick="quickSend('Цель')">Цель!</button>
+        <button class="qr-btn" onclick="quickSend('Цель')">Цель</button>
         <button class="qr-btn" onclick="quickSend('Чисто')">Чисто</button>
-        <button class="qr-btn" onclick="quickSend('Координаты')">Коорд</button>
+        <button class="qr-btn" onclick="quickSend('Координаты')">Координаты</button>
     </div>
 
     <div class="chat-input-area">
@@ -189,28 +188,28 @@
             <div class="telemetry-box" id="telemetry">
                 Time: <b id="time-val">00:00:00</b><br>
                 Date: <b id="date-val">--.--.----</b><br>
-                Loc: <b id="loc-name">ТРИАНГУЛЯЦИЯ...</b><br>
-                Satel: <b id="sat-val">24 ACTIVE</b><br>
+                Loc: <b id="loc-name">Загрузка..</b><br>
+                Satel: <b id="sat-val">16 активных</b><br>
                 Stat: <span class="stat-indicator"></span><b class="stat-active">active</b>
             </div>
             <div class="minimap-container"><div id="minimap"></div></div>
         </div>
         <div class="weather-ticker">
             <div class="ticker-content" id="weather-val">
-                ПОЛУЧЕНИЕ ДАННЫХ МЕТЕОСЛУЖБЫ... СКАНИРОВАНИЕ ЛОКАЛЬНЫХ СЛОЕВ АТМОСФЕРЫ... СИНХРОНИЗАЦИЯ СО СПУТНИКОВОЙ ГРУППИРОВКОЙ...
+                Загрузка..
             </div>
         </div>
     </div>
     
     <div class="crosshair" id="main-crosshair">
-        <div class="target-data" id="target-info">SCANNING...</div>
+        <div class="target-data" id="target-info">Сканирование..</div>
     </div>
 
     <div class="controls" id="main-controls">
-        <button class="icon-btn" onclick="menuAction('Режим визуализации', toggleVision)" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5-11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
-        <button class="icon-btn" onclick="menuAction('Фильтр сканера', toggleScannerMask)" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.66 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
-        <button class="icon-btn" id="poi-btn" onclick="menuAction('Маркировка сектора', enablePoiMode)" title="Mark POI"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
-        <button class="icon-btn" id="chat-btn" onclick="menuAction('Канал связи', toggleChat)" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
+        <button class="icon-btn" onclick="menuAction('Вид', toggleVision)" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5-11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
+        <button class="icon-btn" onclick="menuAction('Сканер', toggleScannerMask)" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.66 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
+        <button class="icon-btn" id="poi-btn" onclick="menuAction('Маркер', enablePoiMode)" title="Mark POI"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
+        <button class="icon-btn" id="chat-btn" onclick="menuAction('Связь', toggleChat)" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
     </div>
 
     <div class="controls hidden" id="poi-edit-controls">
@@ -430,9 +429,9 @@
             .setLngLat(e.lngLat)
             .setHTML(`
                 <div class="marker-form">
-                    <input type="text" id="poi-title" placeholder="ИМЯ ОБЪЕКТА...">
-                    <textarea id="poi-desc" placeholder="ДАННЫЕ..."></textarea>
-                    <button id="save-poi-btn">МАРКИРОВАТЬ</button>
+                    <input type="text" id="poi-title" placeholder="Название">
+                    <textarea id="poi-desc" placeholder="Комментарий"></textarea>
+                    <button id="save-poi-btn">Сохранить</button>
                 </div>
             `).addTo(mapBottom);
 
@@ -555,3 +554,4 @@
 </script>
 </body>
 </html>
+
