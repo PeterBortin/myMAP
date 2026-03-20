@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>NEURAL INTERFACE v15.0.6 - TACTICAL SCANNER</title>
+    <title>NEURAL INTERFACE v15.0.7 - TACTICAL SCANNER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -91,19 +91,26 @@
             100% { transform: translateY(0); }
         }
 
-        /* SEARCH INTERFACE v15.0.6 */
-        #search-container-dynamic {
+        /* SEARCH INTERFACE v15.0.7 */
+        #search-wrapper {
             position: absolute;
             bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 350;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+        }
+
+        #search-container-dynamic {
             width: 0;
             height: 62px;
             background: rgba(0, 20, 0, 0.95);
             backdrop-filter: blur(15px);
             border: 1px solid var(--neon);
             border-radius: 32px;
-            z-index: 350;
             pointer-events: auto;
             overflow: hidden;
             transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
@@ -124,6 +131,30 @@
             outline: none;
         }
         .dynamic-search-input::placeholder { color: var(--neon); opacity: 0.4; }
+
+        #search-suggestions {
+            width: 300px;
+            background: rgba(0, 10, 0, 0.9);
+            border: 1px solid var(--neon);
+            border-bottom: none;
+            margin-bottom: 5px;
+            display: none;
+            flex-direction: column;
+            pointer-events: auto;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 255, 126, 0.2);
+        }
+        .suggestion-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--glass);
+            cursor: pointer;
+            font-size: 11px;
+            transition: 0.2s;
+        }
+        .suggestion-item:hover { background: var(--glass); color: #fff; }
+        .suggestion-item b { display: block; color: var(--neon); margin-bottom: 2px; }
+        .suggestion-item span { opacity: 0.6; font-size: 9px; }
 
         .search-inner-btn {
             background: none;
@@ -277,14 +308,17 @@
         <div class="target-data" id="target-info">Сканирование..</div>
     </div>
 
-    <div id="search-container-dynamic">
-        <input type="text" id="dynamic-search-field" class="dynamic-search-input" placeholder="ПОИСК ОБЪЕКТА (UKRAINE)..." onkeydown="if(event.key==='Enter') executeDynamicSearch()">
-        <button class="search-inner-btn" onclick="executeDynamicSearch()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-        </button>
-        <button class="search-inner-btn" onclick="closeSearchMode()" style="opacity: 0.5;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
+    <div id="search-wrapper">
+        <div id="search-container-dynamic">
+            <input type="text" id="dynamic-search-field" class="dynamic-search-input" placeholder="ПОИСК МАРКЕРА..." oninput="handleSearchInput()" onkeydown="if(event.key==='Enter') executeDynamicSearch()">
+            <button class="search-inner-btn" onclick="executeDynamicSearch()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </button>
+            <button class="search-inner-btn" onclick="closeSearchMode()" style="opacity: 0.5;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+        <div id="search-suggestions"></div>
     </div>
 
     <div class="controls" id="main-controls">
@@ -347,7 +381,7 @@
     let markersMap = {}; 
     let botMarkers = [];
 
-    // SEARCH LOGIC v15.0.6
+    // SEARCH LOGIC v15.0.7 - PREDICTIVE SEARCH
     function openSearchMode() {
         document.getElementById('main-controls').classList.add('hidden');
         const container = document.getElementById('search-container-dynamic');
@@ -358,13 +392,59 @@
 
     function closeSearchMode() {
         document.getElementById('search-container-dynamic').classList.remove('active');
+        document.getElementById('search-suggestions').style.display = 'none';
         document.getElementById('main-controls').classList.remove('hidden');
         document.getElementById('dynamic-search-field').value = '';
+    }
+
+    function handleSearchInput() {
+        const query = document.getElementById('dynamic-search-field').value.toLowerCase().trim();
+        const suggestionsBox = document.getElementById('search-suggestions');
+        
+        if (!query) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+
+        const filtered = savedPois.filter(p => 
+            p.title.toLowerCase().includes(query) || 
+            p.desc.toLowerCase().includes(query)
+        );
+
+        if (filtered.length > 0) {
+            suggestionsBox.innerHTML = filtered.map(p => `
+                <div class="suggestion-item" onclick="jumpToPoi(${p.id})">
+                    <b>${p.title.toUpperCase()}</b>
+                    <span>${p.desc}</span>
+                </div>
+            `).join('');
+            suggestionsBox.style.display = 'flex';
+        } else {
+            suggestionsBox.style.display = 'none';
+        }
+    }
+
+    function jumpToPoi(id) {
+        const poi = savedPois.find(p => p.id === id);
+        if (poi) {
+            mapBottom.flyTo({ center: [poi.lng, poi.lat], zoom: 17.5, pitch: 65 });
+            selectPoi(poi.id, [poi.lng, poi.lat], poi.title, poi.desc);
+            closeSearchMode();
+        }
     }
 
     async function executeDynamicSearch() {
         const query = document.getElementById('dynamic-search-field').value.trim();
         if (!query) return;
+        
+        // Сначала пробуем найти среди локальных меток (точный поиск)
+        const localMatch = savedPois.find(p => p.title.toLowerCase() === query.toLowerCase());
+        if (localMatch) {
+            jumpToPoi(localMatch.id);
+            return;
+        }
+
+        // Если не нашли локально, идем в OSM
         playBeep();
         try {
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ua&limit=1&accept-language=uk`;
@@ -374,7 +454,7 @@
                 mapBottom.flyTo({ center: [parseFloat(data[0].lon), parseFloat(data[0].lat)], zoom: 17 });
                 closeSearchMode();
             } else {
-                appendMsg("ЦЕНТР-9", "Объект в UA-секторе не обнаружен.", true);
+                appendMsg("ЦЕНТР-9", "Объект в локальной базе и UA-секторе не обнаружен.", true);
             }
         } catch (e) {}
     }
@@ -584,19 +664,27 @@
         const poiId = id || Date.now();
         const finalTitle = title || "UA-OBJECT-" + Math.floor(Math.random()*999);
         const finalDesc = desc || "Нет данных";
+        
         const existingPoiIndex = savedPois.findIndex(p => p.id == poiId);
         if (existingPoiIndex !== -1) {
             savedPois[existingPoiIndex] = { ...savedPois[existingPoiIndex], title: finalTitle, desc: finalDesc };
+            // Обновляем текст в попапе, если он открыт
+            const pops = document.getElementsByClassName('maplibregl-popup');
+            if(pops.length > 0) selectPoi(poiId, [lng, lat], finalTitle, finalDesc);
+            syncStorage();
             return;
         }
+
         const el = document.createElement('div'); el.className = 'custom-poi'; el.dataset.id = poiId;
         el.innerHTML = ICONS.default;
         const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
         markersMap[poiId] = marker;
         el.onclick = (ev) => { ev.stopPropagation(); selectPoi(poiId, [lng, lat], finalTitle, finalDesc); };
+        
+        savedPois.push({ id: poiId, lng, lat, title: finalTitle, desc: finalDesc });
         if (!isInitialLoad) {
-            savedPois.push({ id: poiId, lng, lat, title: finalTitle, desc: finalDesc });
-            syncStorage(); selectPoi(poiId, [lng, lat], finalTitle, finalDesc); 
+            syncStorage(); 
+            selectPoi(poiId, [lng, lat], finalTitle, finalDesc); 
         }
     }
 
@@ -639,7 +727,6 @@
         const newDesc = prompt("ИЗМЕНИТЬ ОПИСАНИЕ:", poi.desc);
         if (newTitle !== null && newDesc !== null) {
             savePoi(poi.lng, poi.lat, newTitle, newDesc, false, selectedPoiId);
-            selectPoi(selectedPoiId, [poi.lng, poi.lat], newTitle, newDesc);
         }
     }
 
@@ -647,8 +734,8 @@
     function loadPois() {
         const raw = localStorage.getItem('neural_interface_pois');
         if (raw) { 
-            savedPois = JSON.parse(raw);
-            savedPois.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true, p.id)); 
+            const data = JSON.parse(raw);
+            data.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true, p.id)); 
         }
     }
 
