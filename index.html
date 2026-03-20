@@ -91,7 +91,6 @@
             100% { transform: translateY(0); }
         }
 
-        /* SEARCH INTERFACE v15.0.7 */
         #search-wrapper {
             position: absolute;
             bottom: 40px;
@@ -185,7 +184,6 @@
         .searching-anim { animation: pulse-text 1.5s infinite; }
         @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* TARGET ACQUISITION ANIMATION */
         .target-bracket {
             position: absolute;
             width: 80px;
@@ -349,7 +347,7 @@
     </div>
 
     <div class="controls" id="main-controls">
-        <button class="icon-btn" onclick="menuAction('Вид', toggleVision)" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5-11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
+        <button class="icon-btn" onclick="menuAction('Вид', toggleVision)" title="Vision Mode"><svg viewBox="0 0 24 24"><path d="M12 2L1 7l11 5 11-5-11-5-11-5-11-5-11-5zM1 12l11 5 11-5-11-5-11 5zm0 5l11 5 11-5-11-5-11 5z"/></svg></button>
         <button class="icon-btn" onclick="menuAction('Сканер', toggleScannerMask)" title="Filter"><svg viewBox="0 0 24 24"><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.66 3-3-1.34-3-3-3zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button>
         <button class="icon-btn" id="poi-btn" onclick="menuAction('Маркер', enablePoiMode)" title="Mark POI"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
         <button class="icon-btn" id="chat-btn" onclick="menuAction('Связь', toggleChat)" title="Comms"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
@@ -411,7 +409,6 @@
     let botMarkers = [];
     let targetCounter = 1;
 
-    // TARGET ACQUISITION SYSTEM
     function playTargetAnim(lngLat) {
         const point = mapBottom.project(lngLat);
         const bracket = document.createElement('div');
@@ -423,7 +420,6 @@
         playBeep(true);
     }
 
-    // SEARCH LOGIC
     function openSearchMode() {
         document.getElementById('main-controls').classList.add('hidden');
         const container = document.getElementById('search-container-dynamic');
@@ -526,7 +522,7 @@
         const now = new Date();
         
         if (text === "статус") {
-            let resp = `ОТЧЕТ ПО СЕКТОРУ: Украина. Локация: ${currentCity}. Координаты: ${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}E. Температура: ${currentWeather.temp}°C. Давление: ${currentWeather.press} мм.рт.ст. Осадки: ${currentWeather.status}. Ветер: ${currentWeather.wind} км/ч, направление ${currentWeather.windDir}°.`;
+            let resp = `ОТЧЕТ ПО СЕКТОРУ: Украина. Локация: ${currentCity}. Координаты: ${c.lat.toFixed(4)} северной широты, ${c.lng.toFixed(4)} восточной долготы. Температура: ${currentWeather.temp} градусов. Давление: ${currentWeather.press} мм.рт.ст. Осадки: ${currentWeather.status}. Ветер: ${currentWeather.wind} км/ч.`;
             appendMsg("ЦЕНТР-9", resp, true); speak(resp); return;
         }
 
@@ -569,7 +565,7 @@
             }
         }
         
-        let responseText = (text === "координаты") ? `Текущая фиксация: [${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}].` : "Данные по сектору Украина получены. Ожидаю указаний.";
+        let responseText = (text === "координаты") ? `Текущая фиксация: ${c.lat.toFixed(6)} северной широты, ${c.lng.toFixed(6)} восточной долготы.` : "Данные по сектору Украина получены. Ожидаю указаний.";
         setTimeout(() => { appendMsg("ЦЕНТР-9", responseText, true); speak(responseText); }, 400);
     }
 
@@ -750,7 +746,10 @@
         if(markersMap[id]) markersMap[id].getElement().classList.add('selected');
         document.getElementById('main-controls').classList.add('hidden');
         document.getElementById('poi-edit-controls').classList.remove('hidden');
-        speak(`${title}.`);
+        
+        // Голосовое сопровождение выбора объекта
+        speak(`${title}. ${desc}. Координаты: ${coords[1].toFixed(5)} северной широты, ${coords[0].toFixed(5)} восточной долготы.`);
+
         const pops = document.getElementsByClassName('maplibregl-popup');
         while(pops[0]) pops[0].remove();
         new maplibregl.Popup({ closeButton: false, offset: [0, -15] })
