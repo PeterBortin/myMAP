@@ -250,6 +250,9 @@
         .custom-poi.selected { background: var(--alert); box-shadow: 0 0 20px var(--alert); transform: rotate(45deg) scale(1.4); }
         .custom-poi.bot-marker { border-radius: 50%; transform: none; background: #fff; border-color: var(--neon); }
         .custom-poi.bot-marker svg { transform: none; }
+        .custom-poi.target-point { background: var(--alert); clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius: 0; }
+        .custom-poi.sos-point { background: #fff; animation: sos-blink 0.5s infinite alternate; border: 2px solid var(--alert); }
+        @keyframes sos-blink { from { background: #fff; box-shadow: 0 0 5px #fff; } to { background: var(--alert); box-shadow: 0 0 20px var(--alert); } }
         
         .maplibregl-popup { z-index: 500; }
         .maplibregl-popup-content { background: transparent; padding: 0; border: none; box-shadow: none; }
@@ -381,12 +384,14 @@
         pharmacy: `<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/></svg>`,
         restaurant: `<svg viewBox="0 0 24 24"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>`,
         shop: `<svg viewBox="0 0 24 24"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2c0 .55.45 1 1 1v5h10v-5h6c.55 0 1-.45 1-1zm-9 4H6v-4h6v4z"/></svg>`,
-        bank: `<svg viewBox="0 0 24 24"><path d="M11.5 1L2 6v2h19V6L11.5 1zM6.25 10v7h3v-7h-3zm6.25 0v7h3v-7h-3zm6.25 0v7h3v-7h-3zM2 19v2h19v-2H2z"/></svg>`
+        bank: `<svg viewBox="0 0 24 24"><path d="M11.5 1L2 6v2h19V6L11.5 1zM6.25 10v7h3v-7h-3zm6.25 0v7h3v-7h-3zm6.25 0v7h3v-7h-3zM2 19v2h19v-2H2z"/></svg>`,
+        target: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="2"/></svg>`,
+        sos: `<svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`
     };
 
     let currentCenter = [30.5234, 50.4501]; // Kyiv
     let currentCity = "КИЇВ";
-    let currentWeather = { temp: "--", status: "СИНХРОНИЗАЦИЯ", wind: "--" };
+    let currentWeather = { temp: "--", status: "СИНХРОНИЗАЦИЯ", wind: "--", press: "--", hum: "--" };
     const config = { center: currentCenter, zoom: 16.5, pitch: 60, bearing: -15, attributionControl: false };
 
     const mapBottom = new maplibregl.Map({ container: 'map-bottom', style: STYLES.vector, ...config });
@@ -404,6 +409,7 @@
     let savedPois = [];
     let markersMap = {}; 
     let botMarkers = [];
+    let targetCounter = 1;
 
     // TARGET ACQUISITION SYSTEM
     function playTargetAnim(lngLat) {
@@ -413,15 +419,11 @@
         bracket.style.left = point.x + 'px';
         bracket.style.top = point.y + 'px';
         document.body.appendChild(bracket);
-        
-        // Удаляем анимацию после завершения
         setTimeout(() => bracket.remove(), 700);
-        
-        // Звуковое сопровождение захвата
         playBeep(true);
     }
 
-    // SEARCH LOGIC v15.0.7 - PREDICTIVE SEARCH
+    // SEARCH LOGIC
     function openSearchMode() {
         document.getElementById('main-controls').classList.add('hidden');
         const container = document.getElementById('search-container-dynamic');
@@ -440,28 +442,12 @@
     function handleSearchInput() {
         const query = document.getElementById('dynamic-search-field').value.toLowerCase().trim();
         const suggestionsBox = document.getElementById('search-suggestions');
-        
-        if (!query) {
-            suggestionsBox.style.display = 'none';
-            return;
-        }
-
-        const filtered = savedPois.filter(p => 
-            p.title.toLowerCase().includes(query) || 
-            p.desc.toLowerCase().includes(query)
-        );
-
+        if (!query) { suggestionsBox.style.display = 'none'; return; }
+        const filtered = savedPois.filter(p => p.title.toLowerCase().includes(query) || p.desc.toLowerCase().includes(query));
         if (filtered.length > 0) {
-            suggestionsBox.innerHTML = filtered.map(p => `
-                <div class="suggestion-item" onclick="jumpToPoi(${p.id})">
-                    <b>${p.title.toUpperCase()}</b>
-                    <span>${p.desc}</span>
-                </div>
-            `).join('');
+            suggestionsBox.innerHTML = filtered.map(p => `<div class="suggestion-item" onclick="jumpToPoi(${p.id})"><b>${p.title.toUpperCase()}</b><span>${p.desc}</span></div>`).join('');
             suggestionsBox.style.display = 'flex';
-        } else {
-            suggestionsBox.style.display = 'none';
-        }
+        } else { suggestionsBox.style.display = 'none'; }
     }
 
     function jumpToPoi(id) {
@@ -469,10 +455,7 @@
         if (poi) {
             const dest = [poi.lng, poi.lat];
             mapBottom.flyTo({ center: dest, zoom: 17.5, pitch: 65, duration: 1500 });
-            
-            // Ждем завершения полета или запускаем сразу для визуального эффекта
             setTimeout(() => playTargetAnim(dest), 1000);
-            
             selectPoi(poi.id, dest, poi.title, poi.desc);
             closeSearchMode();
         }
@@ -481,13 +464,8 @@
     async function executeDynamicSearch() {
         const query = document.getElementById('dynamic-search-field').value.trim();
         if (!query) return;
-        
         const localMatch = savedPois.find(p => p.title.toLowerCase() === query.toLowerCase());
-        if (localMatch) {
-            jumpToPoi(localMatch.id);
-            return;
-        }
-
+        if (localMatch) { jumpToPoi(localMatch.id); return; }
         playBeep();
         try {
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ua&limit=1&accept-language=uk`;
@@ -498,9 +476,7 @@
                 mapBottom.flyTo({ center: dest, zoom: 17 });
                 setTimeout(() => playTargetAnim(dest), 800);
                 closeSearchMode();
-            } else {
-                appendMsg("ЦЕНТР-9", "Объект в локальной базе и UA-секторе не обнаружен.", true);
-            }
+            } else { appendMsg("ЦЕНТР-9", "Объект в локальной базе и UA-секторе не обнаружен.", true); }
         } catch (e) {}
     }
 
@@ -510,16 +486,23 @@
             const geoRes = await fetch(geoUrl);
             const geoData = await geoRes.json();
             currentCity = geoData.address.city || geoData.address.town || geoData.address.village || "СЕКТОР-UA";
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto`;
             const response = await fetch(url);
             const data = await response.json();
             const curr = data.current;
             const weatherDesc = { 0: "ЯСНО", 1: "ПРЕИМ. ЯСНО", 2: "ОБЛАЧНО", 3: "ПАСМУРНО", 45: "ТУМАН", 61: "ДОЖДЬ", 71: "СНЕГ", 95: "ГРОЗА" };
-            currentWeather = { temp: Math.round(curr.temperature_2m), status: weatherDesc[curr.weather_code] || "СТАБИЛЬНО", wind: Math.round(curr.wind_speed_10m) };
+            currentWeather = { 
+                temp: Math.round(curr.temperature_2m), 
+                status: weatherDesc[curr.weather_code] || "СТАБИЛЬНО", 
+                wind: Math.round(curr.wind_speed_10m),
+                windDir: curr.wind_direction_10m,
+                press: Math.round(curr.surface_pressure * 0.750062), // hPa to mmHg
+                hum: curr.relative_humidity_2m
+            };
             document.getElementById('weather-val').innerHTML = `
                 <div class="ticker-line">РЕГИОН: ${currentCity.toUpperCase()} | UA-СЕКТОР: ${lat.toFixed(3)}N ${lng.toFixed(3)}E</div>
                 <div class="ticker-line">МЕТЕО: ${currentWeather.status} | ТЕМП: ${currentWeather.temp}°C | ВЕТЕР: ${currentWeather.wind} КМ/Ч</div>
-                <div class="ticker-line">СИСТЕМА: UA-NET АКТИВНА | КАНАЛ: ЦЕНТР-9 ОНЛАЙН</div>
+                <div class="ticker-line">ДАВЛЕНИЕ: ${currentWeather.press} ММ РТ.СТ. | ВЛАЖНОСТЬ: ${currentWeather.hum}%</div>
                 <div class="ticker-line">СТАТУС: ЛОКАЛЬНОЕ СКАНЕРОВАНИЕ | UA-BOUNDARIES ONLY</div>
             `;
         } catch (e) {}
@@ -540,19 +523,53 @@
     async function botResponse(userText) {
         const text = userText.toLowerCase().trim();
         const c = mapBottom.getCenter();
+        const now = new Date();
+        
+        if (text === "статус") {
+            let resp = `ОТЧЕТ ПО СЕКТОРУ: Украина. Локация: ${currentCity}. Координаты: ${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}E. Температура: ${currentWeather.temp}°C. Давление: ${currentWeather.press} мм.рт.ст. Осадки: ${currentWeather.status}. Ветер: ${currentWeather.wind} км/ч, направление ${currentWeather.windDir}°.`;
+            appendMsg("ЦЕНТР-9", resp, true); speak(resp); return;
+        }
+
+        if (text === "цель") {
+            const tId = `TARGET-${targetCounter++}`;
+            const timeStr = `${now.toLocaleTimeString()} ${now.toLocaleDateString()}`;
+            savePoi(c.lng, c.lat, tId, `Зафиксировано: ${timeStr}`, false, null, 'target-point');
+            appendMsg("ЦЕНТР-9", `Объект ${tId} взят на сопровождение. Координаты переданы.`, true);
+            playBeep(true); return;
+        }
+
+        if (text === "чисто") {
+            let count = 0;
+            savedPois = savedPois.filter(p => {
+                if (p.title.startsWith("TARGET-")) {
+                    if (markersMap[p.id]) markersMap[p.id].remove();
+                    delete markersMap[p.id];
+                    count++; return false;
+                } return true;
+            });
+            syncStorage();
+            appendMsg("ЦЕНТР-9", `Сектор очищен. Удалено целей: ${count}.`, true);
+            return;
+        }
+
+        if (text === "sos") {
+            savePoi(c.lng, c.lat, "ALARM-SOS", `ТРЕВОГА! Сигнал бедствия: ${now.toLocaleTimeString()}`, false, null, 'sos-point');
+            appendMsg("ЦЕНТР-9", "СИГНАЛ SOS ПРИНЯТ. Координаты транслируются по всем каналам!", true);
+            speak("Внимание! Сигнал бедствия активирован.");
+            playBeep(true); return;
+        }
+
         if (text.includes("найди") || text.includes("где") || text.includes("поиск")) {
             const queryMap = { "аптек": "pharmacy", "азс": "fuel", "газ": "fuel", "еда": "restaurant", "магазин": "shop", "банк": "bank" };
             let foundTag = null;
             for (let key in queryMap) { if (text.includes(key)) foundTag = queryMap[key]; }
             if (foundTag) {
                 appendMsg("ЦЕНТР-9", `Запрос принят. Сканирую сектор UA на наличие ${foundTag}...`, true);
-                searchOverpass(foundTag, c.lat, c.lng);
-                return;
+                searchOverpass(foundTag, c.lat, c.lng); return;
             }
         }
-        let responseText = (text === "статус") ? `ОТЧЕТ: Украина, регион: ${currentCity}. Координаты: ${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}E. Погода: ${currentWeather.temp}°C.` : 
-                           (text === "координаты") ? `Текущая фиксация: [${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}].` :
-                           (text === "sos") ? "ВНИМАНИЕ: Сигнал бедствия активирован в UA-зоне." : "Данные по сектору Украина получены.";
+        
+        let responseText = (text === "координаты") ? `Текущая фиксация: [${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}].` : "Данные по сектору Украина получены. Ожидаю указаний.";
         setTimeout(() => { appendMsg("ЦЕНТР-9", responseText, true); speak(responseText); }, 400);
     }
 
@@ -705,7 +722,7 @@
         enablePoiMode();
     });
 
-    function savePoi(lng, lat, title, desc, isInitialLoad = false, id = null) {
+    function savePoi(lng, lat, title, desc, isInitialLoad = false, id = null, specialClass = '') {
         const poiId = id || Date.now();
         const finalTitle = title || "UA-OBJECT-" + Math.floor(Math.random()*999);
         const finalDesc = desc || "Нет данных";
@@ -713,23 +730,18 @@
         const existingPoiIndex = savedPois.findIndex(p => p.id == poiId);
         if (existingPoiIndex !== -1) {
             savedPois[existingPoiIndex] = { ...savedPois[existingPoiIndex], title: finalTitle, desc: finalDesc };
-            const pops = document.getElementsByClassName('maplibregl-popup');
-            if(pops.length > 0) selectPoi(poiId, [lng, lat], finalTitle, finalDesc);
-            syncStorage();
-            return;
+            selectPoi(poiId, [lng, lat], finalTitle, finalDesc);
+            syncStorage(); return;
         }
 
-        const el = document.createElement('div'); el.className = 'custom-poi'; el.dataset.id = poiId;
-        el.innerHTML = ICONS.default;
+        const el = document.createElement('div'); el.className = 'custom-poi ' + specialClass; el.dataset.id = poiId;
+        el.innerHTML = specialClass === 'target-point' ? ICONS.target : (specialClass === 'sos-point' ? ICONS.sos : ICONS.default);
         const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapBottom);
         markersMap[poiId] = marker;
         el.onclick = (ev) => { ev.stopPropagation(); selectPoi(poiId, [lng, lat], finalTitle, finalDesc); };
         
         savedPois.push({ id: poiId, lng, lat, title: finalTitle, desc: finalDesc });
-        if (!isInitialLoad) {
-            syncStorage(); 
-            selectPoi(poiId, [lng, lat], finalTitle, finalDesc); 
-        }
+        if (!isInitialLoad) { syncStorage(); selectPoi(poiId, [lng, lat], finalTitle, finalDesc); }
     }
 
     function selectPoi(id, coords, title, desc) {
@@ -738,7 +750,7 @@
         if(markersMap[id]) markersMap[id].getElement().classList.add('selected');
         document.getElementById('main-controls').classList.add('hidden');
         document.getElementById('poi-edit-controls').classList.remove('hidden');
-        speak(`${title}. ${desc}.`);
+        speak(`${title}.`);
         const pops = document.getElementsByClassName('maplibregl-popup');
         while(pops[0]) pops[0].remove();
         new maplibregl.Popup({ closeButton: false, offset: [0, -15] })
@@ -779,7 +791,10 @@
         const raw = localStorage.getItem('neural_interface_pois');
         if (raw) { 
             const data = JSON.parse(raw);
-            data.forEach(p => savePoi(p.lng, p.lat, p.title, p.desc, true, p.id)); 
+            data.forEach(p => {
+                const sClass = p.title.startsWith("TARGET-") ? 'target-point' : (p.title.startsWith("ALARM-") ? 'sos-point' : '');
+                savePoi(p.lng, p.lat, p.title, p.desc, true, p.id, sClass); 
+            }); 
         }
     }
 
